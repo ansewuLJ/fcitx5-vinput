@@ -238,3 +238,13 @@ ModelName=sherpa-onnx-paraformer-zh-small-2024-03-09
 - `模型` 会在 daemon 重启后生效
 - `LLM` 相关配置会在下一次识别后处理时读取
 - 识别后处理配置通过后处理选单键在运行时切换，默认是 `F9`
+
+## Release 打包
+
+- 仓库内置了 `GitHub Actions` 发布流程，入口在 `.github/workflows/release.yml`
+- 推送形如 `v0.1.0` 的 tag 后，workflow 会自动构建并上传这些产物到 GitHub Release：
+  - 源码包 `fcitx5-vinput-<version>.tar.gz`
+  - Ubuntu 24.04 `.deb`
+  - Arch Linux `.pkg.tar.zst`
+- `Debian/Ubuntu` 打包复用 `CMake + CPack`
+- `Arch` 打包复用 `packaging/arch/PKGBUILD.in`
