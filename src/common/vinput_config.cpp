@@ -532,9 +532,40 @@ VinputSettings LoadVinputSettings() {
     return config.settings();
 }
 
+std::string NormalizeLlmBaseUrl(std::string url) {
+    while (!url.empty() && url.back() == '/') {
+        url.pop_back();
+    }
+    if (url.empty()) {
+        return url;
+    }
+
+    constexpr std::string_view kV1 = "/v1";
+    constexpr std::string_view kChatCompletions = "/chat/completions";
+
+    if (url.size() >= kChatCompletions.size() &&
+        url.compare(url.size() - kChatCompletions.size(),
+                     kChatCompletions.size(), kChatCompletions) == 0) {
+        url.erase(url.size() - kChatCompletions.size());
+        while (!url.empty() && url.back() == '/') {
+            url.pop_back();
+        }
+    }
+
+    if (url.size() >= kV1.size() &&
+        url.compare(url.size() - kV1.size(), kV1.size(), kV1) == 0) {
+        return url;
+    }
+
+    url += "/v1";
+    return url;
+}
+
 bool SaveVinputSettings(const VinputSettings& settings) {
+    VinputSettings normalized = settings;
+    normalized.llmBaseUrl = NormalizeLlmBaseUrl(normalized.llmBaseUrl);
     ModelManager model_manager;
-    VinputConfig config(settings, {}, {}, model_manager.GetBaseDir(), false);
+    VinputConfig config(normalized, {}, {}, model_manager.GetBaseDir(), false);
     return fcitx::safeSaveAsIni(config, fcitx::StandardPath::Type::PkgConfig,
                                 kVinputConfigPath);
 }

@@ -69,45 +69,6 @@ std::string BuildRequestUrl(const std::string& base_url) {
     return url;
 }
 
-std::vector<std::string> BuildCandidateRequestUrls(
-    const std::string& base_url) {
-    const std::string primary_url = BuildRequestUrl(base_url);
-    if (primary_url.empty()) {
-        return {};
-    }
-
-    std::vector<std::string> urls;
-    urls.push_back(primary_url);
-
-    constexpr std::string_view kV1 = "/v1";
-    constexpr std::string_view kChatCompletions = "/chat/completions";
-
-    std::string normalized = base_url;
-    while (!normalized.empty() && normalized.back() == '/') {
-        normalized.pop_back();
-    }
-
-    if (normalized.empty()) {
-        return urls;
-    }
-
-    const bool has_chat_completions =
-        normalized.size() >= kChatCompletions.size() &&
-        normalized.compare(normalized.size() - kChatCompletions.size(),
-                           kChatCompletions.size(),
-                           kChatCompletions) == 0;
-    const bool has_v1 =
-        normalized.size() >= kV1.size() &&
-        normalized.compare(normalized.size() - kV1.size(), kV1.size(), kV1) ==
-            0;
-
-    if (!has_chat_completions && !has_v1) {
-        urls.push_back(normalized + "/v1" +
-                       std::string(kChatCompletions));
-    }
-
-    return urls;
-}
 
 bool LooksLikeHtml(std::string_view text) {
     const auto begin = text.find_first_not_of(" \t\r\n");
@@ -265,8 +226,8 @@ std::optional<std::vector<std::string>> RewriteWithOpenAiCompatible(
         return std::nullopt;
     }
 
-    const auto urls = BuildCandidateRequestUrls(settings.llmBaseUrl);
-    if (urls.empty()) {
+    const std::string url = BuildRequestUrl(settings.llmBaseUrl);
+    if (url.empty()) {
         curl_easy_cleanup(curl);
         return std::nullopt;
     }
@@ -309,129 +270,102 @@ std::optional<std::vector<std::string>> RewriteWithOpenAiCompatible(
     curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
     curl_easy_setopt(curl, CURLOPT_USERAGENT, "fcitx5-vinput/0.1");
 
-    for (std::size_t i = 0; i < urls.size(); ++i) {
-        const bool has_fallback = i + 1 < urls.size();
-        const auto& url = urls[i];
-        std::string response_body;
+    std::string response_body;
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_body);
 
-        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_body);
+    CURLcode curl_code = curl_easy_perform(curl);
+    long status_code = 0;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status_code);
 
-        CURLcode curl_code = curl_easy_perform(curl);
-        long status_code = 0;
-        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status_code);
-
-        if (curl_code != CURLE_OK) {
-            fprintf(stderr,
-                    "vinput-daemon: LLM request to %s failed: %s\n",
-                    url.c_str(), curl_easy_strerror(curl_code));
-            if (has_fallback) {
-                continue;
-            }
-            curl_slist_free_all(headers);
-            curl_easy_cleanup(curl);
-            return std::nullopt;
-        }
-
-        if (status_code < 200 || status_code >= 300) {
-            fprintf(stderr,
-                    "vinput-daemon: LLM request to %s returned HTTP %ld: %s\n",
-                    url.c_str(), status_code, response_body.c_str());
-            if (has_fallback) {
-                continue;
-            }
-            curl_slist_free_all(headers);
-            curl_easy_cleanup(curl);
-            return std::nullopt;
-        }
-
-        LogResponseBody("LLM raw response from", url, response_body);
-
-        if (LooksLikeHtml(response_body)) {
-            fprintf(stderr,
-                    "vinput-daemon: LLM endpoint %s returned HTML instead of "
-                    "JSON\n",
-                    url.c_str());
-            if (has_fallback) {
-                continue;
-            }
-            curl_slist_free_all(headers);
-            curl_easy_cleanup(curl);
-            return std::nullopt;
-        }
-
-        json response;
-        try {
-            response = json::parse(response_body);
-        } catch (const std::exception& e) {
-            fprintf(stderr,
-                    "vinput-daemon: failed to parse LLM response JSON from "
-                    "%s: %s\n",
-                    url.c_str(), e.what());
-            if (has_fallback) {
-                continue;
-            }
-            curl_slist_free_all(headers);
-            curl_easy_cleanup(curl);
-            return std::nullopt;
-        }
-
-        const auto error_it = response.find("error");
-        if (error_it != response.end()) {
-            fprintf(stderr,
-                    "vinput-daemon: LLM response from %s contains error: %s\n",
-                    url.c_str(), error_it->dump().c_str());
-            if (has_fallback) {
-                continue;
-            }
-            curl_slist_free_all(headers);
-            curl_easy_cleanup(curl);
-            return std::nullopt;
-        }
-
-        auto contents = ExtractMessageContents(response);
-        if (contents.empty()) {
-            fprintf(stderr,
-                    "vinput-daemon: LLM response from %s does not contain "
-                    "message content\n",
-                    url.c_str());
-            if (has_fallback) {
-                continue;
-            }
-            curl_slist_free_all(headers);
-            curl_easy_cleanup(curl);
-            return std::nullopt;
-        }
-
-        if (candidate_count > 1) {
-            std::vector<std::string> structured_candidates;
-            for (const auto& content : contents) {
-                auto parsed = ExtractStructuredCandidates(content);
-                structured_candidates.insert(structured_candidates.end(),
-                                             std::make_move_iterator(parsed.begin()),
-                                             std::make_move_iterator(parsed.end()));
-            }
-
-            if (!structured_candidates.empty()) {
-                curl_slist_free_all(headers);
-                curl_easy_cleanup(curl);
-                return structured_candidates;
-            }
-
-            fprintf(stderr,
-                    "vinput-daemon: LLM response from %s did not contain a "
-                    "valid JSON candidates array, falling back to plain text\n",
-                    url.c_str());
-        }
-
+    if (curl_code != CURLE_OK) {
+        fprintf(stderr,
+                "vinput-daemon: LLM request to %s failed: %s\n",
+                url.c_str(), curl_easy_strerror(curl_code));
         curl_slist_free_all(headers);
         curl_easy_cleanup(curl);
-        return contents;
+        return std::nullopt;
+    }
+
+    if (status_code < 200 || status_code >= 300) {
+        fprintf(stderr,
+                "vinput-daemon: LLM request to %s returned HTTP %ld: %s\n",
+                url.c_str(), status_code, response_body.c_str());
+        curl_slist_free_all(headers);
+        curl_easy_cleanup(curl);
+        return std::nullopt;
+    }
+
+    LogResponseBody("LLM raw response from", url, response_body);
+
+    if (LooksLikeHtml(response_body)) {
+        fprintf(stderr,
+                "vinput-daemon: LLM endpoint %s returned HTML instead of "
+                "JSON\n",
+                url.c_str());
+        curl_slist_free_all(headers);
+        curl_easy_cleanup(curl);
+        return std::nullopt;
+    }
+
+    json response;
+    try {
+        response = json::parse(response_body);
+    } catch (const std::exception& e) {
+        fprintf(stderr,
+                "vinput-daemon: failed to parse LLM response JSON from "
+                "%s: %s\n",
+                url.c_str(), e.what());
+        curl_slist_free_all(headers);
+        curl_easy_cleanup(curl);
+        return std::nullopt;
+    }
+
+    const auto error_it = response.find("error");
+    if (error_it != response.end()) {
+        fprintf(stderr,
+                "vinput-daemon: LLM response from %s contains error: %s\n",
+                url.c_str(), error_it->dump().c_str());
+        curl_slist_free_all(headers);
+        curl_easy_cleanup(curl);
+        return std::nullopt;
+    }
+
+    auto contents = ExtractMessageContents(response);
+    if (contents.empty()) {
+        fprintf(stderr,
+                "vinput-daemon: LLM response from %s does not contain "
+                "message content\n",
+                url.c_str());
+        curl_slist_free_all(headers);
+        curl_easy_cleanup(curl);
+        return std::nullopt;
+    }
+
+    if (candidate_count > 1) {
+        std::vector<std::string> structured_candidates;
+        for (const auto& content : contents) {
+            auto parsed = ExtractStructuredCandidates(content);
+            structured_candidates.insert(structured_candidates.end(),
+                                         std::make_move_iterator(parsed.begin()),
+                                         std::make_move_iterator(parsed.end()));
+        }
+
+        if (!structured_candidates.empty()) {
+            curl_slist_free_all(headers);
+            curl_easy_cleanup(curl);
+            return structured_candidates;
+        }
+
+        fprintf(stderr,
+                "vinput-daemon: LLM response from %s did not contain a "
+                "valid JSON candidates array, falling back to plain text\n",
+                url.c_str());
     }
 
     curl_slist_free_all(headers);
     curl_easy_cleanup(curl);
-    return std::nullopt;
+    return contents;
 }
 
 void AppendUniqueCandidate(vinput::result::Payload& payload,
