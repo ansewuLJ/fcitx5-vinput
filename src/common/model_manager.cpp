@@ -203,6 +203,7 @@ ModelManager::ListDetailed(const std::string &active_model) const {
       s.model_type = j.value("model_type", "");
       s.language = j.value("language", "auto");
       s.supports_hotwords = j.value("supports_hotwords", false);
+      s.size_bytes = j.value("size_bytes", uint64_t{0});
     } catch (...) {
       s.state = ModelState::Broken;
       summaries.push_back(std::move(s));

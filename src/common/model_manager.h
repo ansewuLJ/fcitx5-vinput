@@ -39,6 +39,7 @@ struct ModelSummary {
   std::string model_type;
   std::string language;
   bool supports_hotwords = false;
+  uint64_t size_bytes = 0;
 };
 
 class ModelManager {

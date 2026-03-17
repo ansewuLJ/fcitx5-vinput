@@ -1,25 +1,10 @@
 #include "cli/command_scene.h"
+#include "cli/cli_helpers.h"
 #include "common/core_config.h"
 #include "common/i18n.h"
 #include "common/postprocess_scene.h"
-#include <cstdio>
+#include "common/string_utils.h"
 #include <nlohmann/json.hpp>
-
-namespace {
-
-vinput::scene::Config ToSceneConfig(const CoreConfig::Scenes &s) {
-  vinput::scene::Config c;
-  c.activeSceneId = s.activeScene;
-  c.scenes = s.definitions;
-  return c;
-}
-
-void FromSceneConfig(CoreConfig::Scenes &s, const vinput::scene::Config &c) {
-  s.activeScene = c.activeSceneId;
-  s.definitions = c.scenes;
-}
-
-} // namespace
 
 int RunSceneList(Formatter &fmt, const CliContext &ctx) {
   CoreConfig config = LoadCoreConfig();
@@ -67,14 +52,9 @@ int RunSceneAdd(const std::string &id, const std::string &label,
   }
   FromSceneConfig(config.scenes, scene_config);
 
-  if (!SaveCoreConfig(config)) {
-    fmt.PrintError(_("Failed to save config."));
-    return 1;
-  }
+  if (!SaveConfigOrFail(config, fmt)) return 1;
 
-  char buf[256];
-  std::snprintf(buf, sizeof(buf), _("Scene '%s' added."), id.c_str());
-  fmt.PrintSuccess(buf);
+  fmt.PrintSuccess(vinput::str::FmtStr(_("Scene '%s' added."), id));
   return 0;
 }
 
@@ -90,14 +70,9 @@ int RunSceneUse(const std::string &id, Formatter &fmt, const CliContext &ctx) {
   }
   FromSceneConfig(config.scenes, scene_config);
 
-  if (!SaveCoreConfig(config)) {
-    fmt.PrintError(_("Failed to save config."));
-    return 1;
-  }
+  if (!SaveConfigOrFail(config, fmt)) return 1;
 
-  char buf[256];
-  std::snprintf(buf, sizeof(buf), _("Default scene set to '%s'."), id.c_str());
-  fmt.PrintSuccess(buf);
+  fmt.PrintSuccess(vinput::str::FmtStr(_("Default scene set to '%s'."), id));
   return 0;
 }
 
@@ -114,13 +89,8 @@ int RunSceneRemove(const std::string &id, bool force, Formatter &fmt,
   }
   FromSceneConfig(config.scenes, scene_config);
 
-  if (!SaveCoreConfig(config)) {
-    fmt.PrintError(_("Failed to save config."));
-    return 1;
-  }
+  if (!SaveConfigOrFail(config, fmt)) return 1;
 
-  char buf[256];
-  std::snprintf(buf, sizeof(buf), _("Scene '%s' removed."), id.c_str());
-  fmt.PrintSuccess(buf);
+  fmt.PrintSuccess(vinput::str::FmtStr(_("Scene '%s' removed."), id));
   return 0;
 }

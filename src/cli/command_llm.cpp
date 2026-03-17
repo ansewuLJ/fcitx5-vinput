@@ -1,25 +1,20 @@
 #include "cli/command_llm.h"
 
 #include <algorithm>
-#include <cstdio>
 #include <string>
 
 #include <nlohmann/json.hpp>
 
+#include "cli/cli_helpers.h"
 #include "common/i18n.h"
 #include "common/core_config.h"
+#include "common/string_utils.h"
 
 static std::string MaskApiKey(const std::string &key) {
   if (key.size() <= 8)
     return std::string(key.size(), '*');
   return key.substr(0, 4) + std::string(key.size() - 8, '*') +
          key.substr(key.size() - 4);
-}
-
-static std::string FormatMsg(const char *tmpl, const std::string &arg) {
-  char buf[512];
-  std::snprintf(buf, sizeof(buf), tmpl, arg.c_str());
-  return buf;
 }
 
 int RunLlmList(Formatter &fmt, const CliContext &ctx) {
@@ -58,7 +53,7 @@ int RunLlmAdd(const std::string &name, const std::string &base_url,
   auto config = LoadCoreConfig();
   for (const auto &p : config.llm.providers) {
     if (p.name == name) {
-      fmt.PrintError(FormatMsg(_("LLM provider '%s' already exists."), name));
+      fmt.PrintError(vinput::str::FmtStr(_("LLM provider '%s' already exists."), name));
       return 1;
     }
   }
@@ -76,11 +71,8 @@ int RunLlmAdd(const std::string &name, const std::string &base_url,
     config.llm.activeProvider = name;
   }
 
-  if (!SaveCoreConfig(config)) {
-    fmt.PrintError(_("Failed to save config."));
-    return 1;
-  }
-  fmt.PrintSuccess(FormatMsg(_("LLM provider '%s' added."), name));
+  if (!SaveConfigOrFail(config, fmt)) return 1;
+  fmt.PrintSuccess(vinput::str::FmtStr(_("LLM provider '%s' added."), name));
   return 0;
 }
 
@@ -95,15 +87,12 @@ int RunLlmUse(const std::string &name, Formatter &fmt, const CliContext &ctx) {
     }
   }
   if (!found) {
-    fmt.PrintError(FormatMsg(_("LLM provider '%s' not found."), name));
+    fmt.PrintError(vinput::str::FmtStr(_("LLM provider '%s' not found."), name));
     return 1;
   }
   config.llm.activeProvider = name;
-  if (!SaveCoreConfig(config)) {
-    fmt.PrintError(_("Failed to save config."));
-    return 1;
-  }
-  fmt.PrintSuccess(FormatMsg(_("Active LLM provider set to '%s'."), name));
+  if (!SaveConfigOrFail(config, fmt)) return 1;
+  fmt.PrintSuccess(vinput::str::FmtStr(_("Active LLM provider set to '%s'."), name));
   return 0;
 }
 
@@ -112,7 +101,7 @@ int RunLlmRemove(const std::string &name, bool force, Formatter &fmt,
   (void)ctx;
   auto config = LoadCoreConfig();
   if (name == config.llm.activeProvider && !force) {
-    fmt.PrintError(FormatMsg(_("Cannot remove active provider '%s'. Use --force."), name));
+    fmt.PrintError(vinput::str::FmtStr(_("Cannot remove active provider '%s'. Use --force."), name));
     return 1;
   }
   auto &providers = config.llm.providers;
@@ -120,15 +109,12 @@ int RunLlmRemove(const std::string &name, bool force, Formatter &fmt,
       std::find_if(providers.begin(), providers.end(),
                    [&name](const LlmProvider &p) { return p.name == name; });
   if (it == providers.end()) {
-    fmt.PrintError(FormatMsg(_("LLM provider '%s' not found."), name));
+    fmt.PrintError(vinput::str::FmtStr(_("LLM provider '%s' not found."), name));
     return 1;
   }
   providers.erase(it);
-  if (!SaveCoreConfig(config)) {
-    fmt.PrintError(_("Failed to save config."));
-    return 1;
-  }
-  fmt.PrintSuccess(FormatMsg(_("LLM provider '%s' removed."), name));
+  if (!SaveConfigOrFail(config, fmt)) return 1;
+  fmt.PrintSuccess(vinput::str::FmtStr(_("LLM provider '%s' removed."), name));
   return 0;
 }
 
@@ -140,10 +126,7 @@ int RunLlmEnable(Formatter &fmt, const CliContext &ctx) {
     return 0;
   }
   config.llm.enabled = true;
-  if (!SaveCoreConfig(config)) {
-    fmt.PrintError(_("Failed to save config."));
-    return 1;
-  }
+  if (!SaveConfigOrFail(config, fmt)) return 1;
   fmt.PrintSuccess(_("LLM features are now ENABLED. Restart the daemon to apply."));
   return 0;
 }
@@ -156,10 +139,7 @@ int RunLlmDisable(Formatter &fmt, const CliContext &ctx) {
     return 0;
   }
   config.llm.enabled = false;
-  if (!SaveCoreConfig(config)) {
-    fmt.PrintError(_("Failed to save config."));
-    return 1;
-  }
+  if (!SaveConfigOrFail(config, fmt)) return 1;
   fmt.PrintSuccess(_("LLM features are now DISABLED. Restart the daemon to apply."));
   return 0;
 }

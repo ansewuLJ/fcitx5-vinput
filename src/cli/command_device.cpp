@@ -1,21 +1,12 @@
 #include "cli/command_device.h"
+#include "cli/cli_helpers.h"
 #include "common/core_config.h"
 #include "common/i18n.h"
 #include "common/pipewire_device.h"
+#include "common/string_utils.h"
 
-#include <cstdio>
 #include <nlohmann/json.hpp>
 #include <vector>
-
-namespace {
-
-static std::string FormatMsg1(const char *tmpl, const std::string &a) {
-  char buf[512];
-  std::snprintf(buf, sizeof(buf), tmpl, a.c_str());
-  return buf;
-}
-
-} // namespace
 
 int RunDeviceList(Formatter &fmt, const CliContext &ctx) {
   CoreConfig config = LoadCoreConfig();
@@ -77,19 +68,16 @@ int RunDeviceUse(const std::string &name, Formatter &fmt,
       }
     }
     if (!found) {
-      fmt.PrintWarning(FormatMsg1(
+      fmt.PrintWarning(vinput::str::FmtStr(
           _("Device '%s' not found in PipeWire. Setting it anyway."), name));
     }
   }
 
   config.captureDevice = name;
 
-  if (!SaveCoreConfig(config)) {
-    fmt.PrintError(_("Failed to save config."));
-    return 1;
-  }
+  if (!SaveConfigOrFail(config, fmt)) return 1;
 
-  fmt.PrintSuccess(FormatMsg1(
+  fmt.PrintSuccess(vinput::str::FmtStr(
       _("Capture device set to '%s'. Restart daemon to apply changes."), name));
   return 0;
 }

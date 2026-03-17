@@ -1,4 +1,5 @@
 #include "cli/command_hotword.h"
+#include "cli/cli_helpers.h"
 #include "cli/editor_utils.h"
 #include "common/i18n.h"
 #include "common/core_config.h"
@@ -27,10 +28,7 @@ int RunHotwordSet(const std::string &file_path, Formatter &fmt,
   (void)ctx;
   CoreConfig config = LoadCoreConfig();
   config.hotwordsFile = file_path;
-  if (!SaveCoreConfig(config)) {
-    fmt.PrintError(_("Failed to save config."));
-    return 1;
-  }
+  if (!SaveConfigOrFail(config, fmt)) return 1;
   fmt.PrintSuccess(_("Hotwords file path saved."));
   return 0;
 }
@@ -39,10 +37,7 @@ int RunHotwordClear(Formatter &fmt, const CliContext &ctx) {
   (void)ctx;
   CoreConfig config = LoadCoreConfig();
   config.hotwordsFile.clear();
-  if (!SaveCoreConfig(config)) {
-    fmt.PrintError(_("Failed to save config."));
-    return 1;
-  }
+  if (!SaveConfigOrFail(config, fmt)) return 1;
   fmt.PrintSuccess(_("Hotwords file path cleared."));
   return 0;
 }
