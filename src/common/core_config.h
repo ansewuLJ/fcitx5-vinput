@@ -32,6 +32,13 @@ struct CoreConfig {
     int commandCandidateCount{1};        // command mode candidate count
   } llm;
 
+  struct Asr {
+    bool normalizeAudio{true};
+    struct Vad {
+      bool enabled{true};
+    } vad;
+  } asr;
+
   struct Scenes {
     std::string activeScene{"default"};
     std::vector<vinput::scene::Definition> definitions;

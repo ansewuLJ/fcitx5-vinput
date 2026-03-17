@@ -115,6 +115,29 @@ void from_json(const json &j, CoreConfig::Llm &p) {
 }
 
 // ---------------------------------------------------------------------------
+// CoreConfig::Asr serialization
+// ---------------------------------------------------------------------------
+
+void to_json(json &j, const CoreConfig::Asr::Vad &v) {
+  j = json{{"enabled", v.enabled}};
+}
+
+void from_json(const json &j, CoreConfig::Asr::Vad &v) {
+  v.enabled = j.value("enabled", v.enabled);
+}
+
+void to_json(json &j, const CoreConfig::Asr &a) {
+  j = json{{"normalize_audio", a.normalizeAudio}, {"vad", a.vad}};
+}
+
+void from_json(const json &j, CoreConfig::Asr &a) {
+  a.normalizeAudio = j.value("normalize_audio", a.normalizeAudio);
+  if (j.contains("vad")) {
+    a.vad = j.at("vad").get<CoreConfig::Asr::Vad>();
+  }
+}
+
+// ---------------------------------------------------------------------------
 // CoreConfig::Scenes serialization
 // ---------------------------------------------------------------------------
 
@@ -146,6 +169,7 @@ void to_json(json &j, const CoreConfig &p) {
   j["default_language"] = p.defaultLanguage;
   j["hotwords_file"] = p.hotwordsFile;
   j["scenes"] = p.scenes;
+  j["asr"] = p.asr;
 }
 
 void from_json(const json &j, CoreConfig &p) {
@@ -162,6 +186,9 @@ void from_json(const json &j, CoreConfig &p) {
   p.hotwordsFile = j.value("hotwords_file", p.hotwordsFile);
   if (j.contains("scenes")) {
     p.scenes = j.at("scenes").get<CoreConfig::Scenes>();
+  }
+  if (j.contains("asr")) {
+    p.asr = j.at("asr").get<CoreConfig::Asr>();
   }
 }
 

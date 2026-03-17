@@ -1,4 +1,5 @@
 #include "asr_engine.h"
+#include "audio_utils.h"
 
 #include <sherpa-onnx/c-api/c-api.h>
 
@@ -30,10 +31,14 @@ bool AsrEngine::Init(const ModelInfo &info, const AsrConfig &asr_config) {
   config.feat_config.sample_rate = 16000;
   config.feat_config.feature_dim = 80;
 
-  // Default decoding configs
-  config.decoding_method = "greedy_search";
-  config.max_active_paths = 4;
-  config.blank_penalty = 0.0f;
+  // Decoding configs from model params (repo can preset optimal values)
+  const std::string p_decoding_method =
+      info.Param("decoding_method", "greedy_search");
+  config.decoding_method = p_decoding_method.c_str();
+  config.max_active_paths =
+      SafeStoi(info.Param("max_active_paths", "4"), 4);
+  config.blank_penalty =
+      SafeStof(info.Param("blank_penalty", "0.0"), 0.0f);
 
   // Stash file paths to keep c_str() pointers alive through recognizer creation
   const std::string tokens_path = info.File("tokens");
@@ -235,6 +240,14 @@ bool AsrEngine::Init(const ModelInfo &info, const AsrConfig &asr_config) {
   }
 
   initialized_ = true;
+  normalize_audio_ = asr_config.normalize_audio;
+
+  if (asr_config.vad_enabled && !asr_config.vad_model_path.empty()) {
+    if (!vad_.Init(asr_config.vad_model_path)) {
+      fprintf(stderr, "vinput: VAD model not available, continuing without VAD\n");
+    }
+  }
+
   fprintf(
       stderr,
       "vinput: sherpa-onnx ASR initialized successfully (type: %s, lang: %s)\n",
@@ -259,6 +272,20 @@ std::string AsrEngine::Infer(const std::vector<int16_t> &pcm_data) {
   std::vector<float> samples(pcm_data.size());
   for (size_t i = 0; i < pcm_data.size(); ++i) {
     samples[i] = static_cast<float>(pcm_data[i]) / 32768.0f;
+  }
+
+  // Phase 2: peak normalization for low-volume recordings
+  if (normalize_audio_) {
+    vinput::audio::PeakNormalize(samples);
+  }
+
+  // Phase 3: VAD silence trimming
+  if (vad_.Available()) {
+    samples = vad_.Trim(samples, 16000);
+    if (samples.size() < kMinSamplesForInference) {
+      fprintf(stderr, "vinput: audio too short after VAD trim, skipping\n");
+      return "";
+    }
   }
 
   const SherpaOnnxOfflineStream *stream =

@@ -61,6 +61,9 @@ int main(int argc, char *argv[]) {
     AsrConfig asr_config;
     asr_config.language = startup_settings.defaultLanguage;
     asr_config.hotwords_file = startup_settings.hotwordsFile;
+    asr_config.normalize_audio = startup_settings.asr.normalizeAudio;
+    asr_config.vad_enabled = startup_settings.asr.vad.enabled;
+    asr_config.vad_model_path = VINPUT_VAD_MODEL_PATH;
     if (!asr.Init(model_info, asr_config)) {
       fprintf(stderr, "vinput-daemon: ASR engine init failed, exiting\n");
       return 1;

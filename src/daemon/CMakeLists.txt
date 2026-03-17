@@ -11,12 +11,20 @@ else()
     set(VINPUT_DAEMON_INSTALL_RPATH "\$ORIGIN/../${VINPUT_RUNTIME_LIBDIR}")
 endif()
 
+set(VINPUT_VAD_MODEL_DIR "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATADIR}/fcitx5-vinput/vad")
+
 add_executable(vinput-daemon
     main.cpp
     audio_capture.cpp
     asr_engine.cpp
+    audio_utils.cpp
+    vad_trimmer.cpp
     dbus_service.cpp
     post_processor.cpp
+)
+
+target_compile_definitions(vinput-daemon PRIVATE
+    VINPUT_VAD_MODEL_PATH="${VINPUT_VAD_MODEL_DIR}/silero_vad.onnx"
 )
 
 target_include_directories(vinput-daemon PRIVATE
@@ -66,3 +74,8 @@ install(FILES
     "${SHERPA_ONNX_DIR}/lib/libonnxruntime.so"
     DESTINATION "${VINPUT_RUNTIME_LIBDIR}"
 )
+# VAD model (optional — daemon gracefully degrades if missing)
+if(EXISTS "${CMAKE_SOURCE_DIR}/data/vad/silero_vad.onnx")
+    install(FILES "${CMAKE_SOURCE_DIR}/data/vad/silero_vad.onnx"
+            DESTINATION "${VINPUT_VAD_MODEL_DIR}")
+endif()

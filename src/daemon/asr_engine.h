@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common/model_manager.h"
+#include "vad_trimmer.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -12,6 +13,9 @@ struct AsrConfig {
   std::string language;
   std::string hotwords_file;
   int thread_num = 4;
+  bool normalize_audio = true;
+  bool vad_enabled = true;
+  std::string vad_model_path;
 };
 
 class AsrEngine {
@@ -29,4 +33,6 @@ public:
 private:
   const SherpaOnnxOfflineRecognizer *recognizer_ = nullptr;
   bool initialized_ = false;
+  bool normalize_audio_ = true;
+  VadTrimmer vad_;
 };
