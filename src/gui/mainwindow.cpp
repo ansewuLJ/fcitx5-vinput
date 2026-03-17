@@ -24,6 +24,8 @@
 #include <QUrl>
 #include <QVBoxLayout>
 
+#include <QApplication>
+#include <QPalette>
 #include <algorithm>
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
@@ -302,7 +304,7 @@ void MainWindow::setupModelTab() {
 
   auto *topLayout = new QHBoxLayout();
   tableModels = new QTableWidget();
-  SetupTable(tableModels, {tr("Name"), tr("Type"), tr("Language"), tr("Hotwords"), tr("Status")});
+  SetupTable(tableModels, {tr("Name"), tr("Type"), tr("Language"), tr("Size"), tr("Hotwords"), tr("Status")});
   topLayout->addWidget(tableModels, 1);
 
   auto *btnLayout = new QVBoxLayout();
@@ -372,6 +374,12 @@ static QTableWidgetItem *MakeCell(const QString &text, const QString &data = {})
 void MainWindow::refreshModelList() {
   tableModels->setRowCount(0);
 
+  const QPalette pal = QApplication::palette();
+  const QColor colorPositive = pal.color(QPalette::Active, QPalette::Link);
+  const QColor colorDisabled = pal.color(QPalette::Disabled, QPalette::Text);
+  const QColor colorHighlight = pal.color(QPalette::Active, QPalette::Highlight);
+  const QColor colorError = QColor(198, 40, 40); // red — universal error color
+
   QString local_err;
   QList<ModelEntry> local_models = LoadLocalModelsFromCli(&local_err);
   if (!local_err.isEmpty())
@@ -383,22 +391,25 @@ void MainWindow::refreshModelList() {
     tableModels->setItem(row, 0, MakeCell(m.name, m.name));
     tableModels->setItem(row, 1, MakeCell(m.model_type));
     tableModels->setItem(row, 2, MakeCell(m.language));
+    auto *sizeCell = MakeCell(m.size);
+    sizeCell->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    tableModels->setItem(row, 3, sizeCell);
     QString hw = m.supports_hotwords ? tr("yes") : tr("no");
     auto *hwCell = MakeCell(hw);
-    hwCell->setForeground(m.supports_hotwords ? QColor("#2a9d2a") : QColor("#888888"));
-    tableModels->setItem(row, 3, hwCell);
+    hwCell->setForeground(m.supports_hotwords ? colorPositive : colorDisabled);
+    tableModels->setItem(row, 4, hwCell);
     QString status = m.status.isEmpty() ? tr("installed") : m.status;
     if (m.status == "active") status = tr("active");
     else if (m.status == "broken") status = tr("broken");
     else if (m.status == "installed") status = tr("installed");
     auto *stCell = MakeCell(status);
     if (m.status == "active") {
-      stCell->setForeground(QColor("#1565c0"));
+      stCell->setForeground(colorHighlight);
       QFont f = stCell->font(); f.setBold(true); stCell->setFont(f);
     } else if (m.status == "broken") {
-      stCell->setForeground(QColor("#c62828"));
+      stCell->setForeground(colorError);
     }
-    tableModels->setItem(row, 4, stCell);
+    tableModels->setItem(row, 5, stCell);
   }
 
   tableRemoteModels->setRowCount(0);
@@ -414,23 +425,25 @@ void MainWindow::refreshModelList() {
     tableRemoteModels->setItem(row, 1, MakeCell(m.display_name));
     tableRemoteModels->setItem(row, 2, MakeCell(m.model_type));
     tableRemoteModels->setItem(row, 3, MakeCell(m.language));
-    tableRemoteModels->setItem(row, 4, MakeCell(m.size));
+    auto *remoteSizeCell = MakeCell(m.size);
+    remoteSizeCell->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    tableRemoteModels->setItem(row, 4, remoteSizeCell);
     QString hw = m.supports_hotwords ? tr("yes") : tr("no");
     auto *hwCell = MakeCell(hw);
-    hwCell->setForeground(m.supports_hotwords ? QColor("#2a9d2a") : QColor("#888888"));
+    hwCell->setForeground(m.supports_hotwords ? colorPositive : colorDisabled);
     tableRemoteModels->setItem(row, 5, hwCell);
     QString remoteStatus = m.status;
     if (m.status == "installed") remoteStatus = tr("installed");
     else if (m.status == "available") remoteStatus = tr("available");
     auto *stCell = MakeCell(remoteStatus);
     if (m.status == "installed") {
-      stCell->setForeground(QColor("#888888"));
+      stCell->setForeground(colorDisabled);
       for (int c = 0; c < tableRemoteModels->columnCount(); ++c) {
         if (auto *ci = tableRemoteModels->item(row, c))
           ci->setFlags(ci->flags() & ~Qt::ItemIsEnabled);
       }
     } else {
-      stCell->setForeground(QColor("#2a9d2a"));
+      stCell->setForeground(colorPositive);
     }
     tableRemoteModels->setItem(row, 6, stCell);
   }
