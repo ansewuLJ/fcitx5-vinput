@@ -27,10 +27,6 @@
         <translation>LLM：</translation>
     </message>
     <message>
-        <source>Open Advanced Config (config.json)</source>
-        <translation type="vanished">打开高级配置（config.json）</translation>
-    </message>
-    <message>
         <source>General Settings</source>
         <translation>通用设置</translation>
     </message>
@@ -47,32 +43,12 @@
         <translation>刷新</translation>
     </message>
     <message>
-        <source>Remote Models (Registry):</source>
-        <translation type="vanished">远程模型（注册表）：</translation>
-    </message>
-    <message>
-        <source>Download Selected Remote Model:</source>
-        <translation type="vanished">下载选中的远程模型：</translation>
-    </message>
-    <message>
-        <source>Download</source>
-        <translation type="vanished">下载</translation>
-    </message>
-    <message>
         <source>Download Selected</source>
         <translation>下载选中项</translation>
     </message>
     <message>
         <source>Model Management</source>
         <translation>模型管理</translation>
-    </message>
-    <message>
-        <source>Installed Models</source>
-        <translation type="vanished">已安装模型</translation>
-    </message>
-    <message>
-        <source>Remote Models (Registry)</source>
-        <translation type="vanished">远程模型（注册表）</translation>
     </message>
     <message>
         <source>Name</source>
@@ -259,10 +235,6 @@
         <translation>密钥：</translation>
     </message>
     <message>
-        <source>Model Name:</source>
-        <translation type="vanished">模型名称：</translation>
-    </message>
-    <message>
         <source>Edit LLM Provider</source>
         <translation>编辑 LLM 提供商</translation>
     </message>
@@ -271,38 +243,12 @@
         <translation>确定要移除 LLM 提供商“%1”吗？</translation>
     </message>
     <message>
-        <source>The LLM provider '%1' is currently active. Are you SURE you want to forcibly remove it?</source>
-        <translation type="vanished">LLM 提供商“%1”目前正处于活跃状态，确定要强制移除吗？</translation>
-    </message>
-    <message>
-        <source>Hotword Weight (Score):</source>
-        <translation type="vanished">热词权重（分数）：</translation>
-    </message>
-    <message>
-        <source>Custom Hotwords (One per line):</source>
-        <translation type="vanished">自定义热词（每行一个）：</translation>
-    </message>
-    <message>
-        <source>Import from File</source>
-        <translation type="vanished">导入文件</translation>
-    </message>
-    <message>
         <source>Hotword Settings</source>
         <translation>热词设置</translation>
     </message>
     <message>
-        <source>Import Hotwords</source>
-        <translation type="vanished">导入热词</translation>
-    </message>
-    <message>
         <source>Text Files (*.txt);;All Files (*)</source>
         <translation>文本文件 (*.txt);;所有文件 (*)</translation>
-    </message>
-    <message>
-        <source>Cannot open file %1:
-%2.</source>
-        <translation type="vanished">无法打开文件 %1：
-%2。</translation>
     </message>
     <message>
         <source>Candidate Count:</source>
@@ -359,6 +305,25 @@
     <message>
         <source>available</source>
         <translation>可下载</translation>
+    </message>
+    <message>
+        <source>Provider:</source>
+        <translation>提供者：</translation>
+    </message>
+    <message>
+        <source>Removing %1...</source>
+        <translation>正在移除 %1...</translation>
+    </message>
+</context>
+<context>
+    <name>QObject</name>
+    <message>
+        <source>vinput not found in PATH</source>
+        <translation>在 PATH 中未找到 vinput</translation>
+    </message>
+    <message>
+        <source>vinput command timed out</source>
+        <translation>vinput 命令超时</translation>
     </message>
 </context>
 </TS>

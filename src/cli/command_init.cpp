@@ -26,6 +26,8 @@ int RunInit(bool force, Formatter& fmt, const CliContext& ctx) {
                 .id = "default",
                 .label = "",
                 .prompt = "",
+                .provider_id = "",
+                .model = "",
             },
         };
         if (SaveCoreConfig(config)) {

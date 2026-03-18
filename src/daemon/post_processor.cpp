@@ -190,7 +190,7 @@ RewriteWithOpenAiCompatible(const std::string &text,
   messages.push_back({{"role", "user"}, {"content", text}});
 
   json request = {
-      {"model", provider.model},
+      {"model", scene.model},
       {"stream", false},
       {"temperature", 0.2},
       {"response_format", BuildCandidatesSchema(candidate_count)},
@@ -210,7 +210,7 @@ RewriteWithOpenAiCompatible(const std::string &text,
   curl_easy_setopt(guard.curl, CURLOPT_POSTFIELDSIZE,
                    static_cast<long>(request_body.size()));
   curl_easy_setopt(guard.curl, CURLOPT_WRITEFUNCTION, WriteResponseCallback);
-  curl_easy_setopt(guard.curl, CURLOPT_TIMEOUT_MS, provider.timeout_ms);
+  curl_easy_setopt(guard.curl, CURLOPT_TIMEOUT_MS, scene.timeout_ms);
   curl_easy_setopt(guard.curl, CURLOPT_NOSIGNAL, 1L);
   curl_easy_setopt(guard.curl, CURLOPT_USERAGENT, "fcitx5-vinput/0.1");
 
@@ -364,25 +364,6 @@ PostProcessor::ProcessCommand(const std::string &asr_text,
     return fallback;
   }
 
-  // Build synthetic scene with hardcoded system prompt + user-customizable prompt
-  std::string system_prompt =
-      "You are an AI assistant helping with text editing via voice input. "
-      "The user has given a voice command to operate on the selected text. "
-      "Note that the command is transcribed from voice input and may contain "
-      "speech recognition errors — infer the most likely intended operation "
-      "from context. Execute the inferred command on the user's text and "
-      "output ONLY the result. Do not include markdown formatting or "
-      "explanations.";
-  if (!command_scene.prompt.empty()) {
-    system_prompt += "\n\nAdditional instructions: " + command_scene.prompt;
-  }
-  system_prompt +=
-      "\n\nUser voice command (may contain recognition errors): " +
-      normalized_asr;
-
-  vinput::scene::Definition synthetic_scene;
-  synthetic_scene.prompt = std::move(system_prompt);
-
   const int command_candidate_count =
       NormalizeCandidateCount(command_scene.candidate_count);
 
@@ -392,8 +373,13 @@ PostProcessor::ProcessCommand(const std::string &asr_text,
     return fallback;
   }
 
+  // User message: selected text + voice command
+  std::string user_message = selected_text +
+      "\n\nUser voice command (may contain recognition errors): " +
+      normalized_asr;
+
   auto rewritten =
-      RewriteWithOpenAiCompatible(selected_text, synthetic_scene, *provider,
+      RewriteWithOpenAiCompatible(user_message, command_scene, *provider,
                                    command_candidate_count, error_out);
 
   vinput::result::Payload payload;

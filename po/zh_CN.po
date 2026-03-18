@@ -755,3 +755,66 @@ msgstr "守护进程忙碌（状态：%s）。"
 #: src/cli/command_recording.cpp
 msgid "Daemon is in error state."
 msgstr "守护进程处于错误状态。"
+
+#: src/cli/command_scene.cpp
+msgid "PROVIDER"
+msgstr "提供者"
+
+#: src/cli/command_scene.cpp
+msgid "CANDIDATES"
+msgstr "候选数"
+
+#: src/cli/main.cpp
+msgid "Candidate count"
+msgstr "候选数量"
+
+#: src/cli/main.cpp
+msgid "LLM model name"
+msgstr "LLM 模型名称"
+
+#: src/cli/main.cpp
+msgid "LLM provider name"
+msgstr "LLM 提供者名称"
+
+#: src/cli/command_daemon.cpp
+#, c-format
+msgid "systemctl start failed (exit code: %d)"
+msgstr "systemctl start 失败（退出码：%d）"
+
+#: src/cli/command_daemon.cpp
+#, c-format
+msgid "systemctl stop failed (exit code: %d)"
+msgstr "systemctl stop 失败（退出码：%d）"
+
+#: src/cli/command_daemon.cpp
+#, c-format
+msgid "systemctl restart failed (exit code: %d)"
+msgstr "systemctl restart 失败（退出码：%d）"
+
+#: src/cli/command_llm.cpp
+msgid "No LLM provider configured for command mode."
+msgstr "未配置命令模式的 LLM 提供者。"
+
+#: src/addon/vinput.cpp
+msgid "Command mode is disabled (candidate count is 0)."
+msgstr "命令模式已禁用（候选数为 0）。"
+
+#: src/cli/command_hotword.cpp
+msgid "No hotwords file configured."
+msgstr "未配置热词文件。"
+
+#: src/cli/command_hotword.cpp
+msgid "Hotwords file path saved."
+msgstr "热词文件路径已保存。"
+
+#: src/cli/command_hotword.cpp
+msgid "Hotwords file path cleared."
+msgstr "热词文件路径已清除。"
+
+#: src/cli/command_hotword.cpp
+msgid "No hotwords file configured. Use 'hotword set <path>' first."
+msgstr "未配置热词文件。请先使用 'hotword set <路径>'。"
+
+#: src/cli/command_hotword.cpp
+msgid "Hotwords file updated."
+msgstr "热词文件已更新。"

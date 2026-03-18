@@ -25,16 +25,18 @@ int main(int argc, char *argv[]) {
   app.set_help_flag("-h,--help", _("Print this help message and exit"));
 
   bool json_output = false;
-  app.add_flag("--json", json_output, _("Output in JSON format"));
+  app.add_flag("-j,--json", json_output, _("Output in JSON format"));
 
   // ---- model subcommand ----
   auto *model_cmd = app.add_subcommand("model", _("Manage ASR models"));
+  model_cmd->alias("m");
   model_cmd->require_subcommand(1);
 
   bool model_list_remote = false;
   auto *model_list = model_cmd->add_subcommand(
       "list", _("List installed (and optionally remote) models"));
-  model_list->add_flag("--remote", model_list_remote,
+  model_list->alias("ls");
+  model_list->add_flag("-r,--remote", model_list_remote,
                        _("Include remote models from registry"));
 
   std::string model_add_name;
@@ -50,8 +52,9 @@ int main(int argc, char *argv[]) {
   bool model_remove_force = false;
   auto *model_remove =
       model_cmd->add_subcommand("remove", _("Remove an installed model"));
+  model_remove->alias("rm");
   model_remove->add_option("name", model_remove_name, _("Model name"))->required();
-  model_remove->add_flag("--force", model_remove_force, _("Skip confirmation"));
+  model_remove->add_flag("-f,--force", model_remove_force, _("Skip confirmation"));
 
   std::string model_info_name;
   auto *model_info = model_cmd->add_subcommand("info", _("Show model details"));
@@ -59,21 +62,27 @@ int main(int argc, char *argv[]) {
 
   // ---- scene subcommand ----
   auto *scene_cmd = app.add_subcommand("scene", _("Manage recognition scenes"));
+  scene_cmd->alias("s");
   scene_cmd->require_subcommand(1);
 
   auto *scene_list = scene_cmd->add_subcommand("list", _("List all scenes"));
+  scene_list->alias("ls");
 
   auto *scene_add = scene_cmd->add_subcommand("add", _("Add a new scene"));
   std::string scene_add_id;
   std::string scene_add_label;
   std::string scene_add_prompt;
   std::string scene_add_provider;
+  std::string scene_add_model;
   int scene_add_candidates = 1;
+  int scene_add_timeout_ms = 4000;
   scene_add->add_option("--id", scene_add_id, _("Scene ID"))->required();
-  scene_add->add_option("--label", scene_add_label, _("Display label"));
-  scene_add->add_option("--prompt", scene_add_prompt, _("LLM prompt"));
-  scene_add->add_option("--provider", scene_add_provider, _("LLM provider name"));
-  scene_add->add_option("--candidates", scene_add_candidates, _("Candidate count"))->default_val(1);
+  scene_add->add_option("-l,--label", scene_add_label, _("Display label"));
+  scene_add->add_option("-t,--prompt", scene_add_prompt, _("LLM prompt"));
+  scene_add->add_option("-p,--provider", scene_add_provider, _("LLM provider name"));
+  scene_add->add_option("-m,--model", scene_add_model, _("LLM model name"));
+  scene_add->add_option("-c,--candidates", scene_add_candidates, _("Candidate count"))->default_val(1);
+  scene_add->add_option("--timeout", scene_add_timeout_ms, _("Request timeout in milliseconds"))->default_val(4000);
 
   std::string scene_use_id;
   auto *scene_use = scene_cmd->add_subcommand("use", _("Set active scene"));
@@ -82,39 +91,40 @@ int main(int argc, char *argv[]) {
   std::string scene_remove_id;
   bool scene_remove_force = false;
   auto *scene_remove = scene_cmd->add_subcommand("remove", _("Remove a scene"));
+  scene_remove->alias("rm");
   scene_remove->add_option("id", scene_remove_id, _("Scene ID"))->required();
-  scene_remove->add_flag("--force", scene_remove_force,
+  scene_remove->add_flag("-f,--force", scene_remove_force,
                          _("Force removal of built-in scenes"));
 
   // ---- llm subcommand ----
   auto *llm_cmd = app.add_subcommand("llm", _("Manage LLM providers"));
+  llm_cmd->alias("l");
   llm_cmd->require_subcommand(1);
 
   auto *llm_list =
       llm_cmd->add_subcommand("list", _("List configured LLM providers"));
+  llm_list->alias("ls");
 
   std::string llm_add_name;
   std::string llm_add_base_url;
-  std::string llm_add_model;
   std::string llm_add_api_key;
-  int llm_add_timeout_ms = 4000;
   auto *llm_add = llm_cmd->add_subcommand("add", _("Add an LLM provider"));
   llm_add->add_option("name", llm_add_name, _("Provider name"))->required();
-  llm_add->add_option("--base-url", llm_add_base_url, _("Base URL"))->required();
-  llm_add->add_option("--model", llm_add_model, _("Model name"))->required();
-  llm_add->add_option("--api-key", llm_add_api_key, _("API key"));
-  llm_add->add_option("--timeout", llm_add_timeout_ms, _("Request timeout in milliseconds"))->default_val(4000);
+  llm_add->add_option("-u,--base-url", llm_add_base_url, _("Base URL"))->required();
+  llm_add->add_option("-k,--api-key", llm_add_api_key, _("API key"));
 
   std::string llm_remove_name;
   bool llm_remove_force = false;
   auto *llm_remove =
       llm_cmd->add_subcommand("remove", _("Remove an LLM provider"));
+  llm_remove->alias("rm");
   llm_remove->add_option("name", llm_remove_name, _("Provider name"))->required();
-  llm_remove->add_flag("--force", llm_remove_force, _("Skip confirmation"));
+  llm_remove->add_flag("-f,--force", llm_remove_force, _("Skip confirmation"));
 
   // ---- config subcommand ----
   auto *config_cmd =
       app.add_subcommand("config", _("Read or write configuration values"));
+  config_cmd->alias("cfg");
   config_cmd->require_subcommand(1);
 
   std::string config_get_path;
@@ -132,7 +142,7 @@ int main(int argc, char *argv[]) {
       config_cmd->add_subcommand("set", _("Set a config value by dotpath"));
   config_set->add_option("path", config_set_path, _("Config dotpath"))->required();
   config_set->add_option("value", config_set_value, _("New value"));
-  config_set->add_flag("--stdin", config_set_stdin, _("Read value from stdin"));
+  config_set->add_flag("-i,--stdin", config_set_stdin, _("Read value from stdin"));
 
   std::string config_edit_target;
   auto *config_edit =
@@ -144,6 +154,7 @@ int main(int argc, char *argv[]) {
 
   // ---- daemon subcommand ----
   auto *daemon_cmd = app.add_subcommand("daemon", _("Control the vinput daemon"));
+  daemon_cmd->alias("d");
   daemon_cmd->require_subcommand(1);
 
   auto *daemon_start = daemon_cmd->add_subcommand("start", _("Start the daemon"));
@@ -162,10 +173,11 @@ int main(int argc, char *argv[]) {
   auto *init_cmd =
       app.add_subcommand("init", _("Initialize default config and directories"));
   bool init_force = false;
-  init_cmd->add_flag("--force", init_force, _("Overwrite existing config"));
+  init_cmd->add_flag("-f,--force", init_force, _("Overwrite existing config"));
 
   // ---- hotword subcommand ----
   auto *hotword_cmd = app.add_subcommand("hotword", _("Manage hotwords file"));
+  hotword_cmd->alias("hw");
   hotword_cmd->require_subcommand(1);
 
   auto *hotword_get =
@@ -184,10 +196,12 @@ int main(int argc, char *argv[]) {
 
   // ---- device subcommand ----
   auto *device_cmd = app.add_subcommand("device", _("Manage capture devices"));
+  device_cmd->alias("dev");
   device_cmd->require_subcommand(1);
 
   auto *device_list =
       device_cmd->add_subcommand("list", _("List available audio input devices"));
+  device_list->alias("ls");
 
   std::string device_use_name;
   auto *device_use =
@@ -198,6 +212,7 @@ int main(int argc, char *argv[]) {
   // ---- recording subcommand ----
   auto *recording_cmd =
       app.add_subcommand("recording", _("Control voice recording"));
+  recording_cmd->alias("rec");
   recording_cmd->require_subcommand(1);
 
   auto *recording_start =
@@ -205,16 +220,17 @@ int main(int argc, char *argv[]) {
   auto *recording_stop =
       recording_cmd->add_subcommand("stop", _("Stop recording and recognize"));
   std::string recording_stop_scene;
-  recording_stop->add_option("--scene", recording_stop_scene,
+  recording_stop->add_option("-s,--scene", recording_stop_scene,
                              _("Scene ID (default: active scene)"));
   auto *recording_toggle =
       recording_cmd->add_subcommand("toggle", _("Toggle recording start/stop"));
   std::string recording_toggle_scene;
-  recording_toggle->add_option("--scene", recording_toggle_scene,
+  recording_toggle->add_option("-s,--scene", recording_toggle_scene,
                                _("Scene ID (default: active scene)"));
 
   // ---- status subcommand ----
   auto *status_cmd = app.add_subcommand("status", _("Show overall vinput status"));
+  status_cmd->alias("st");
 
   // ---- Parse ----
   CLI11_PARSE(app, argc, argv);
@@ -251,7 +267,8 @@ int main(int argc, char *argv[]) {
     return RunSceneList(*fmt, ctx);
   } else if (scene_add->parsed()) {
     return RunSceneAdd(scene_add_id, scene_add_label, scene_add_prompt,
-                       scene_add_provider, scene_add_candidates, *fmt, ctx);
+                       scene_add_provider, scene_add_model,
+                       scene_add_candidates, scene_add_timeout_ms, *fmt, ctx);
   } else if (scene_use->parsed()) {
     return RunSceneUse(scene_use_id, *fmt, ctx);
   } else if (scene_remove->parsed()) {
@@ -262,8 +279,8 @@ int main(int argc, char *argv[]) {
   else if (llm_list->parsed()) {
     return RunLlmList(*fmt, ctx);
   } else if (llm_add->parsed()) {
-    return RunLlmAdd(llm_add_name, llm_add_base_url, llm_add_model,
-                     llm_add_api_key, llm_add_timeout_ms, *fmt, ctx);
+    return RunLlmAdd(llm_add_name, llm_add_base_url,
+                     llm_add_api_key, *fmt, ctx);
   } else if (llm_remove->parsed()) {
     return RunLlmRemove(llm_remove_name, llm_remove_force, *fmt, ctx);
   }

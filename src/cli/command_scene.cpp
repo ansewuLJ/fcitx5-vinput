@@ -17,7 +17,9 @@ int RunSceneList(Formatter &fmt, const CliContext &ctx) {
       arr.push_back({{"id", scene.id},
                      {"label", vinput::scene::DisplayLabel(scene)},
                      {"provider_id", scene.provider_id},
+                     {"model", scene.model},
                      {"candidate_count", scene.candidate_count},
+                     {"timeout_ms", scene.timeout_ms},
                      {"builtin", scene.builtin},
                      {"active", active}});
     }
@@ -25,14 +27,15 @@ int RunSceneList(Formatter &fmt, const CliContext &ctx) {
     return 0;
   }
 
-  std::vector<std::string> headers = {_("ID"), _("LABEL"), _("PROVIDER"), _("CANDIDATES"), _("STATUS")};
+  std::vector<std::string> headers = {_("ID"), _("LABEL"), _("PROVIDER"), _("MODEL"), _("CANDIDATES"), _("STATUS")};
   std::vector<std::vector<std::string>> rows;
   for (const auto &scene : scenes) {
     std::string label = vinput::scene::DisplayLabel(scene);
     std::string status =
         (scene.id == config.scenes.activeScene) ? "[*]" : "[ ]";
     std::string provider = scene.provider_id.empty() ? "-" : scene.provider_id;
-    rows.push_back({scene.id, label, provider,
+    std::string model = scene.model.empty() ? "-" : scene.model;
+    rows.push_back({scene.id, label, provider, model,
                     std::to_string(scene.candidate_count), status});
   }
   fmt.PrintTable(headers, rows);
@@ -41,7 +44,8 @@ int RunSceneList(Formatter &fmt, const CliContext &ctx) {
 
 int RunSceneAdd(const std::string &id, const std::string &label,
                 const std::string &prompt, const std::string &provider_id,
-                int candidate_count, Formatter &fmt,
+                const std::string &model, int candidate_count,
+                int timeout_ms, Formatter &fmt,
                 const CliContext & /*ctx*/) {
   CoreConfig config = LoadCoreConfig();
 
@@ -50,7 +54,9 @@ int RunSceneAdd(const std::string &id, const std::string &label,
   def.label = label;
   def.prompt = prompt;
   def.provider_id = provider_id;
+  def.model = model;
   def.candidate_count = candidate_count;
+  def.timeout_ms = timeout_ms;
 
   vinput::scene::Config scene_config = ToSceneConfig(config.scenes);
   std::string error;

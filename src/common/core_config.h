@@ -10,8 +10,6 @@ struct LlmProvider {
   std::string name;
   std::string base_url;
   std::string api_key;
-  std::string model;
-  int timeout_ms = 4000;
 };
 
 struct CoreConfig {

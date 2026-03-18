@@ -15,6 +15,9 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QMessageBox>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QNetworkRequest>
 #include <QProcess>
 #include <QStandardPaths>
 #include <QTableWidget>
@@ -25,6 +28,7 @@
 #include <QVBoxLayout>
 
 #include <QApplication>
+#include <QEventLoop>
 #include <QPalette>
 #include <algorithm>
 
@@ -148,7 +152,7 @@ bool RunVinputJson(const QStringList &args, QJsonDocument *out_doc,
   QString vinput_path = QStandardPaths::findExecutable("vinput");
   if (vinput_path.isEmpty()) {
     if (error_out)
-      *error_out = "vinput not found in PATH";
+      *error_out = QObject::tr("vinput not found in PATH");
     return false;
   }
 
@@ -160,7 +164,7 @@ bool RunVinputJson(const QStringList &args, QJsonDocument *out_doc,
   if (!proc.waitForFinished(5000)) {
     proc.kill();
     if (error_out)
-      *error_out = "vinput command timed out";
+      *error_out = QObject::tr("vinput command timed out");
     return false;
   }
 
@@ -649,6 +653,83 @@ void MainWindow::refreshSceneList() {
   }
 }
 
+// Fetch model list from an OpenAI-compatible /v1/models endpoint.
+// Blocks with a local event loop (OK for a dialog context).
+static QStringList FetchModelsFromProvider(const LlmProvider &provider) {
+  QStringList models;
+  if (provider.base_url.empty())
+    return models;
+
+  QString url = QString::fromStdString(provider.base_url);
+  if (!url.endsWith('/'))
+    url += '/';
+  url += "models";
+
+  QNetworkAccessManager nam;
+  QNetworkRequest req{QUrl(url)};
+  req.setRawHeader("Authorization",
+                    QByteArray("Bearer ") +
+                        QByteArray::fromStdString(provider.api_key));
+
+  QNetworkReply *reply = nam.get(req);
+  QEventLoop loop;
+  QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+  QTimer::singleShot(5000, &loop, &QEventLoop::quit);
+  loop.exec();
+
+  if (reply->error() == QNetworkReply::NoError) {
+    QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
+    QJsonArray data = doc.object().value("data").toArray();
+    for (const auto &v : data) {
+      QString id = v.toObject().value("id").toString();
+      if (!id.isEmpty())
+        models.append(id);
+    }
+    models.sort();
+  }
+  reply->deleteLater();
+  return models;
+}
+
+// Populate provider combo from config, wire it to refresh model combo.
+static void SetupProviderModelCombos(QComboBox *comboProvider,
+                                     QComboBox *comboModel,
+                                     const CoreConfig &config,
+                                     const QString &currentProvider = {},
+                                     const QString &currentModel = {}) {
+  comboProvider->clear();
+  comboProvider->addItem(QString());  // empty = inherit / none
+  for (const auto &p : config.llm.providers)
+    comboProvider->addItem(QString::fromStdString(p.name));
+
+  comboModel->setEditable(true);
+
+  // Copy providers so the lambda is self-contained.
+  auto providers = config.llm.providers;
+  auto refreshModels = [comboModel, comboProvider, providers]() {
+    QString selected = comboProvider->currentText();
+    comboModel->clear();
+    if (selected.isEmpty())
+      return;
+    for (const auto &p : providers) {
+      if (p.name == selected.toStdString()) {
+        comboModel->addItems(FetchModelsFromProvider(p));
+        break;
+      }
+    }
+  };
+
+  QObject::connect(comboProvider, QOverload<int>::of(&QComboBox::currentIndexChanged),
+                   comboProvider, refreshModels);
+
+  if (!currentProvider.isEmpty()) {
+    comboProvider->setCurrentText(currentProvider);
+    refreshModels();
+    if (!currentModel.isEmpty())
+      comboModel->setCurrentText(currentModel);
+  }
+}
+
 void MainWindow::onSceneAdd() {
   QDialog dialog(this);
   dialog.setWindowTitle(tr("Add Scene"));
@@ -658,10 +739,23 @@ void MainWindow::onSceneAdd() {
   auto *editLabel = new QLineEdit();
   auto *editPrompt = new QTextEdit();
   editPrompt->setMaximumHeight(100);
+  auto *comboProvider = new QComboBox();
+  auto *comboModel = new QComboBox();
+  auto *spinTimeout = new QSpinBox();
+  spinTimeout->setRange(1000, 300000);
+  spinTimeout->setSingleStep(1000);
+  spinTimeout->setValue(4000);
+  spinTimeout->setSuffix(" ms");
+
+  CoreConfig config = LoadCoreConfig();
+  SetupProviderModelCombos(comboProvider, comboModel, config);
 
   form->addRow(tr("ID:"), editId);
   form->addRow(tr("Label:"), editLabel);
   form->addRow(tr("Prompt:"), editPrompt);
+  form->addRow(tr("Provider:"), comboProvider);
+  form->addRow(tr("Model:"), comboModel);
+  form->addRow(tr("Timeout (ms):"), spinTimeout);
 
   auto *buttons =
       new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
@@ -675,12 +769,13 @@ void MainWindow::onSceneAdd() {
   if (dialog.exec() != QDialog::Accepted)
     return;
 
-  CoreConfig config = LoadCoreConfig();
-
   vinput::scene::Definition def;
   def.id = editId->text().trimmed().toStdString();
   def.label = editLabel->text().trimmed().toStdString();
   def.prompt = editPrompt->toPlainText().toStdString();
+  def.provider_id = comboProvider->currentText().toStdString();
+  def.model = comboModel->currentText().trimmed().toStdString();
+  def.timeout_ms = spinTimeout->value();
 
   vinput::scene::Config sc;
   sc.activeSceneId = config.scenes.activeScene;
@@ -730,10 +825,24 @@ void MainWindow::onSceneEdit() {
   auto *editPrompt = new QTextEdit();
   editPrompt->setPlainText(QString::fromStdString(found->prompt));
   editPrompt->setMaximumHeight(100);
+  auto *comboProvider = new QComboBox();
+  auto *comboModel = new QComboBox();
+  auto *spinTimeout = new QSpinBox();
+  spinTimeout->setRange(1000, 300000);
+  spinTimeout->setSingleStep(1000);
+  spinTimeout->setValue(found->timeout_ms);
+  spinTimeout->setSuffix(" ms");
+
+  SetupProviderModelCombos(comboProvider, comboModel, config,
+                           QString::fromStdString(found->provider_id),
+                           QString::fromStdString(found->model));
 
   form->addRow(tr("ID:"), editId);
   form->addRow(tr("Label:"), editLabel);
   form->addRow(tr("Prompt:"), editPrompt);
+  form->addRow(tr("Provider:"), comboProvider);
+  form->addRow(tr("Model:"), comboModel);
+  form->addRow(tr("Timeout (ms):"), spinTimeout);
 
   auto *buttons =
       new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
@@ -750,6 +859,9 @@ void MainWindow::onSceneEdit() {
   vinput::scene::Definition updated;
   updated.label = editLabel->text().trimmed().toStdString();
   updated.prompt = editPrompt->toPlainText().toStdString();
+  updated.provider_id = comboProvider->currentText().toStdString();
+  updated.model = comboModel->currentText().trimmed().toStdString();
+  updated.timeout_ms = spinTimeout->value();
 
   vinput::scene::Config sc;
   sc.activeSceneId = config.scenes.activeScene;
@@ -872,9 +984,7 @@ void MainWindow::refreshLlmList() {
   for (const auto &p : config.llm.providers) {
     QString name = QString::fromStdString(p.name);
     QString base_url = QString::fromStdString(p.base_url);
-    QString model = QString::fromStdString(p.model);
-
-    QString display = QString("%1 - %2 @ %3").arg(name, model, base_url);
+    QString display = QString("%1 @ %2").arg(name, base_url);
 
     auto *item = new QListWidgetItem(display, listProviders);
     item->setData(Qt::UserRole, name);
@@ -888,20 +998,12 @@ void MainWindow::onLlmAdd() {
   auto *form = new QFormLayout();
   auto *editName = new QLineEdit();
   auto *editBaseUrl = new QLineEdit();
-  auto *editModel = new QLineEdit();
   auto *editApiKey = new QLineEdit();
   editApiKey->setEchoMode(QLineEdit::Password);
-  auto *spinTimeout = new QSpinBox();
-  spinTimeout->setRange(1000, 300000);
-  spinTimeout->setSingleStep(1000);
-  spinTimeout->setValue(4000);
-  spinTimeout->setSuffix(" ms");
 
   form->addRow(tr("Name:"), editName);
   form->addRow(tr("Base URL:"), editBaseUrl);
-  form->addRow(tr("Model:"), editModel);
   form->addRow(tr("API Key:"), editApiKey);
-  form->addRow(tr("Timeout (ms):"), spinTimeout);
 
   auto *buttons =
       new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
@@ -930,9 +1032,7 @@ void MainWindow::onLlmAdd() {
   LlmProvider provider;
   provider.name = name;
   provider.base_url = editBaseUrl->text().trimmed().toStdString();
-  provider.model = editModel->text().trimmed().toStdString();
   provider.api_key = editApiKey->text().toStdString();
-  provider.timeout_ms = spinTimeout->value();
   config.llm.providers.push_back(provider);
 
   if (!SaveCoreConfig(config)) {
@@ -968,20 +1068,12 @@ void MainWindow::onLlmEdit() {
   auto *editName = new QLineEdit(provider_name);
   editName->setReadOnly(true);
   auto *editBaseUrl = new QLineEdit(QString::fromStdString(found->base_url));
-  auto *editModel = new QLineEdit(QString::fromStdString(found->model));
   auto *editApiKey = new QLineEdit(QString::fromStdString(found->api_key));
   editApiKey->setEchoMode(QLineEdit::Password);
-  auto *spinTimeout = new QSpinBox();
-  spinTimeout->setRange(1000, 300000);
-  spinTimeout->setSingleStep(1000);
-  spinTimeout->setValue(found->timeout_ms);
-  spinTimeout->setSuffix(" ms");
 
   form->addRow(tr("Name:"), editName);
   form->addRow(tr("Base URL:"), editBaseUrl);
-  form->addRow(tr("Model:"), editModel);
   form->addRow(tr("API Key:"), editApiKey);
-  form->addRow(tr("Timeout (ms):"), spinTimeout);
 
   auto *buttons =
       new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
@@ -996,9 +1088,7 @@ void MainWindow::onLlmEdit() {
     return;
 
   found->base_url = editBaseUrl->text().trimmed().toStdString();
-  found->model = editModel->text().trimmed().toStdString();
   found->api_key = editApiKey->text().toStdString();
-  found->timeout_ms = spinTimeout->value();
 
   if (!SaveCoreConfig(config)) {
     QMessageBox::critical(this, tr("Error"),

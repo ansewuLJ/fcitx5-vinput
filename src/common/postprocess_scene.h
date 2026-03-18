@@ -11,7 +11,9 @@ struct Definition {
   std::string label;
   std::string prompt;
   std::string provider_id;
+  std::string model;
   int candidate_count = 1;
+  int timeout_ms = 4000;
   bool builtin = false;
 };
 

@@ -54,7 +54,9 @@ bool UpdateScene(Config *config, const std::string &id, const Definition &def,
       scene.label = def.label;
       scene.prompt = def.prompt;
       scene.provider_id = def.provider_id;
+      scene.model = def.model;
       scene.candidate_count = def.candidate_count;
+      scene.timeout_ms = def.timeout_ms;
       return true;
     }
   }

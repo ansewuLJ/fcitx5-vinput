@@ -59,17 +59,13 @@ std::string GetCoreConfigPath() {
 void to_json(json &j, const LlmProvider &p) {
   j = json{{"name", p.name},
            {"base_url", p.base_url},
-           {"api_key", p.api_key},
-           {"model", p.model},
-           {"timeout_ms", p.timeout_ms}};
+           {"api_key", p.api_key}};
 }
 
 void from_json(const json &j, LlmProvider &p) {
   p.name = j.value("name", p.name);
   p.base_url = j.value("base_url", p.base_url);
   p.api_key = j.value("api_key", p.api_key);
-  p.model = j.value("model", p.model);
-  p.timeout_ms = j.value("timeout_ms", p.timeout_ms);
 }
 
 // ---------------------------------------------------------------------------
@@ -83,7 +79,9 @@ void to_json(json &j, const Definition &d) {
            {"label", d.label},
            {"prompt", d.prompt},
            {"provider_id", d.provider_id},
+           {"model", d.model},
            {"candidate_count", d.candidate_count},
+           {"timeout_ms", d.timeout_ms},
            {"builtin", d.builtin}};
 }
 
@@ -92,7 +90,9 @@ void from_json(const json &j, Definition &d) {
   d.label = j.value("label", std::string{});
   d.prompt = j.value("prompt", std::string{});
   d.provider_id = j.value("provider_id", std::string{});
+  d.model = j.value("model", std::string{});
   d.candidate_count = j.value("candidate_count", 1);
+  d.timeout_ms = j.value("timeout_ms", 4000);
   d.builtin = j.value("builtin", false);
 }
 
@@ -240,6 +240,14 @@ CoreConfig LoadCoreConfig() {
     vinput::scene::Definition cmd;
     cmd.id = std::string(kCommandSceneId);
     cmd.label = "Command";
+    cmd.prompt =
+        "You are an AI assistant helping with text editing via voice input. "
+        "The user has given a voice command to operate on the selected text. "
+        "Note that the command is transcribed from voice input and may contain "
+        "speech recognition errors — infer the most likely intended operation "
+        "from context. Execute the inferred command on the user's text and "
+        "output ONLY the result. Do not include markdown formatting or "
+        "explanations.";
     cmd.builtin = true;
     config.scenes.definitions.push_back(std::move(cmd));
   }

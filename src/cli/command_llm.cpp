@@ -26,25 +26,24 @@ int RunLlmList(Formatter &fmt, const CliContext &ctx) {
     for (const auto &p : providers) {
       arr.push_back({{"name", p.name},
                      {"base_url", p.base_url},
-                     {"model", p.model},
                      {"api_key", ""}});
     }
     fmt.PrintJson(arr);
     return 0;
   }
 
-  std::vector<std::string> headers = {_("NAME"), _("BASE_URL"), _("MODEL"), _("API_KEY")};
+  std::vector<std::string> headers = {_("NAME"), _("BASE_URL"), _("API_KEY")};
   std::vector<std::vector<std::string>> rows;
   for (const auto &p : providers) {
-    rows.push_back({p.name, p.base_url, p.model, MaskApiKey(p.api_key)});
+    rows.push_back({p.name, p.base_url, MaskApiKey(p.api_key)});
   }
   fmt.PrintTable(headers, rows);
   return 0;
 }
 
 int RunLlmAdd(const std::string &name, const std::string &base_url,
-              const std::string &model, const std::string &api_key,
-              int timeout_ms, Formatter &fmt, const CliContext &ctx) {
+              const std::string &api_key, Formatter &fmt,
+              const CliContext &ctx) {
   (void)ctx;
   auto config = LoadCoreConfig();
   for (const auto &p : config.llm.providers) {
@@ -57,9 +56,7 @@ int RunLlmAdd(const std::string &name, const std::string &base_url,
   LlmProvider provider;
   provider.name = name;
   provider.base_url = base_url;
-  provider.model = model;
   provider.api_key = api_key;
-  provider.timeout_ms = timeout_ms;
   config.llm.providers.push_back(provider);
 
   if (!SaveConfigOrFail(config, fmt)) return 1;

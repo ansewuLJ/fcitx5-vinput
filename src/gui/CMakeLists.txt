@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-find_package(Qt5 COMPONENTS Core Gui Widgets REQUIRED)
+find_package(Qt5 COMPONENTS Core Gui Widgets Network REQUIRED)
 find_package(Qt5LinguistTools QUIET)
 pkg_check_modules(PIPEWIRE REQUIRED libpipewire-0.3)
 
@@ -41,6 +41,7 @@ target_link_libraries(vinput-gui
     Qt5::Core
     Qt5::Gui
     Qt5::Widgets
+    Qt5::Network
     vinput-common
     ${PIPEWIRE_LIBRARIES}
 )
