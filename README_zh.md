@@ -11,7 +11,7 @@
 
 [English](README.md) | [中文](README_zh.md)
 
-https://github.com/user-attachments/assets/06554c9d-ca8a-47de-a7c3-2c084707a703
+https://github.com/user-attachments/assets/5a548a68-153c-4842-bab6-926f30bb720e
 
 </div>
 
