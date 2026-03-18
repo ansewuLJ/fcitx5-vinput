@@ -53,6 +53,8 @@ bool UpdateScene(Config *config, const std::string &id, const Definition &def,
     if (scene.id == id) {
       scene.label = def.label;
       scene.prompt = def.prompt;
+      scene.provider_id = def.provider_id;
+      scene.candidate_count = def.candidate_count;
       return true;
     }
   }
@@ -63,6 +65,11 @@ bool UpdateScene(Config *config, const std::string &id, const Definition &def,
 
 bool RemoveScene(Config *config, const std::string &id, bool force,
                  std::string *error) {
+  if (const auto *scene = Find(*config, id); scene && scene->builtin) {
+    if (error)
+      *error = "Cannot remove built-in scene '" + id + "'.";
+    return false;
+  }
   if (!force) {
     if (config->activeSceneId == id) {
       if (error)

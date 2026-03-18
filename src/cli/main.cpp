@@ -67,9 +67,13 @@ int main(int argc, char *argv[]) {
   std::string scene_add_id;
   std::string scene_add_label;
   std::string scene_add_prompt;
+  std::string scene_add_provider;
+  int scene_add_candidates = 1;
   scene_add->add_option("--id", scene_add_id, _("Scene ID"))->required();
   scene_add->add_option("--label", scene_add_label, _("Display label"));
   scene_add->add_option("--prompt", scene_add_prompt, _("LLM prompt"));
+  scene_add->add_option("--provider", scene_add_provider, _("LLM provider name"));
+  scene_add->add_option("--candidates", scene_add_candidates, _("Candidate count"))->default_val(1);
 
   std::string scene_use_id;
   auto *scene_use = scene_cmd->add_subcommand("use", _("Set active scene"));
@@ -101,21 +105,12 @@ int main(int argc, char *argv[]) {
   llm_add->add_option("--api-key", llm_add_api_key, _("API key"));
   llm_add->add_option("--timeout", llm_add_timeout_ms, _("Request timeout in milliseconds"))->default_val(4000);
 
-  std::string llm_use_name;
-  auto *llm_use = llm_cmd->add_subcommand("use", _("Set active LLM provider"));
-  llm_use->add_option("name", llm_use_name, _("Provider name"))->required();
-
   std::string llm_remove_name;
   bool llm_remove_force = false;
   auto *llm_remove =
       llm_cmd->add_subcommand("remove", _("Remove an LLM provider"));
   llm_remove->add_option("name", llm_remove_name, _("Provider name"))->required();
   llm_remove->add_flag("--force", llm_remove_force, _("Skip confirmation"));
-
-  auto *llm_enable =
-      llm_cmd->add_subcommand("enable", _("Enable LLM processing globally"));
-  auto *llm_disable =
-      llm_cmd->add_subcommand("disable", _("Disable LLM processing globally"));
 
   // ---- config subcommand ----
   auto *config_cmd =
@@ -255,8 +250,8 @@ int main(int argc, char *argv[]) {
   else if (scene_list->parsed()) {
     return RunSceneList(*fmt, ctx);
   } else if (scene_add->parsed()) {
-    return RunSceneAdd(scene_add_id, scene_add_label, scene_add_prompt, *fmt,
-                       ctx);
+    return RunSceneAdd(scene_add_id, scene_add_label, scene_add_prompt,
+                       scene_add_provider, scene_add_candidates, *fmt, ctx);
   } else if (scene_use->parsed()) {
     return RunSceneUse(scene_use_id, *fmt, ctx);
   } else if (scene_remove->parsed()) {
@@ -269,14 +264,8 @@ int main(int argc, char *argv[]) {
   } else if (llm_add->parsed()) {
     return RunLlmAdd(llm_add_name, llm_add_base_url, llm_add_model,
                      llm_add_api_key, llm_add_timeout_ms, *fmt, ctx);
-  } else if (llm_use->parsed()) {
-    return RunLlmUse(llm_use_name, *fmt, ctx);
   } else if (llm_remove->parsed()) {
     return RunLlmRemove(llm_remove_name, llm_remove_force, *fmt, ctx);
-  } else if (llm_enable->parsed()) {
-    return RunLlmEnable(*fmt, ctx);
-  } else if (llm_disable->parsed()) {
-    return RunLlmDisable(*fmt, ctx);
   }
 
   // hotword

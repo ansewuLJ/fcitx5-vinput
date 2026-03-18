@@ -81,13 +81,19 @@ namespace vinput::scene {
 void to_json(json &j, const Definition &d) {
   j = json{{"id", d.id},
            {"label", d.label},
-           {"prompt", d.prompt}};
+           {"prompt", d.prompt},
+           {"provider_id", d.provider_id},
+           {"candidate_count", d.candidate_count},
+           {"builtin", d.builtin}};
 }
 
 void from_json(const json &j, Definition &d) {
   d.id = j.value("id", std::string{});
   d.label = j.value("label", std::string{});
   d.prompt = j.value("prompt", std::string{});
+  d.provider_id = j.value("provider_id", std::string{});
+  d.candidate_count = j.value("candidate_count", 1);
+  d.builtin = j.value("builtin", false);
 }
 
 }  // namespace vinput::scene
@@ -97,21 +103,13 @@ void from_json(const json &j, Definition &d) {
 // ---------------------------------------------------------------------------
 
 void to_json(json &j, const CoreConfig::Llm &p) {
-  j = json{{"enabled", p.enabled},
-           {"active_provider", p.activeProvider},
-           {"providers", p.providers},
-           {"postprocess_candidate_count", p.postprocessCandidateCount},
-           {"command_candidate_count", p.commandCandidateCount}};
+  j = json{{"providers", p.providers}};
 }
 
 void from_json(const json &j, CoreConfig::Llm &p) {
-  p.enabled = j.value("enabled", p.enabled);
-  p.activeProvider = j.value("active_provider", p.activeProvider);
   if (j.contains("providers")) {
     p.providers = j.at("providers").get<std::vector<LlmProvider>>();
   }
-  p.postprocessCandidateCount = j.value("postprocess_candidate_count", p.postprocessCandidateCount);
-  p.commandCandidateCount = j.value("command_candidate_count", p.commandCandidateCount);
 }
 
 // ---------------------------------------------------------------------------
@@ -236,6 +234,16 @@ CoreConfig LoadCoreConfig() {
   }
 
   CoreConfig config = LoadCoreConfigFromFile(path);
+
+  // Auto-inject built-in __command__ scene if missing
+  if (!FindCommandScene(config)) {
+    vinput::scene::Definition cmd;
+    cmd.id = std::string(kCommandSceneId);
+    cmd.label = "Command";
+    cmd.builtin = true;
+    config.scenes.definitions.push_back(std::move(cmd));
+  }
+
   cache.cached = config;
   cache.mtime = mtime;
   cache.size = size;
@@ -282,11 +290,21 @@ void NormalizeCoreConfig(CoreConfig *config) {
   }
 }
 
-const LlmProvider *ResolveActiveLlmProvider(const CoreConfig &config) {
-  const std::string &current = config.llm.activeProvider;
+const LlmProvider *ResolveLlmProvider(const CoreConfig &config,
+                                      const std::string &provider_id) {
+  if (provider_id.empty()) return nullptr;
   for (const auto &p : config.llm.providers) {
-    if (p.name == current) {
+    if (p.name == provider_id) {
       return &p;
+    }
+  }
+  return nullptr;
+}
+
+const vinput::scene::Definition *FindCommandScene(const CoreConfig &config) {
+  for (const auto &scene : config.scenes.definitions) {
+    if (scene.id == kCommandSceneId) {
+      return &scene;
     }
   }
   return nullptr;

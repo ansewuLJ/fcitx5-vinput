@@ -25,11 +25,7 @@ struct CoreConfig {
   std::string hotwordsFile;
 
   struct Llm {
-    bool enabled{false};
-    std::string activeProvider;
     std::vector<LlmProvider> providers;
-    int postprocessCandidateCount{1};  // postprocess candidate count
-    int commandCandidateCount{1};        // command mode candidate count
   } llm;
 
   struct Asr {
@@ -51,5 +47,9 @@ bool SaveCoreConfig(const CoreConfig &config);
 std::string GetCoreConfigPath();
 
 void NormalizeCoreConfig(CoreConfig *config);
-const LlmProvider *ResolveActiveLlmProvider(const CoreConfig &config);
+const LlmProvider *ResolveLlmProvider(const CoreConfig &config,
+                                      const std::string &provider_id);
+const vinput::scene::Definition *FindCommandScene(const CoreConfig &config);
 std::filesystem::path ResolveModelBaseDir(const CoreConfig &config);
+
+constexpr std::string_view kCommandSceneId = "__command__";

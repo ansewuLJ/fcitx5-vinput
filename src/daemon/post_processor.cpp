@@ -49,12 +49,8 @@ std::string TrimAsciiWhitespace(std::string text) {
   return text.substr(begin, end - begin + 1);
 }
 
-int NormalizePostprocessCandidateCount(int n) {
+int NormalizeCandidateCount(int n) {
   return n <= 0 ? 0 : n;
-}
-
-int NormalizeCommandCandidateCount(int n) {
-  return n <= 0 ? 1 : n;
 }
 
 json BuildCandidatesSchema(int candidate_count) {
@@ -162,18 +158,8 @@ std::vector<std::string> ExtractCandidates(const json &response) {
 std::optional<std::vector<std::string>>
 RewriteWithOpenAiCompatible(const std::string &text,
                             const vinput::scene::Definition &scene,
-                            const CoreConfig &settings, int candidate_count,
+                            const LlmProvider &provider, int candidate_count,
                             std::string *error_out) {
-  if (!settings.llm.enabled) {
-    return std::nullopt;
-  }
-  const LlmProvider *provider = ResolveActiveLlmProvider(settings);
-  if (!provider) {
-    fprintf(stderr,
-            "vinput-daemon: LLM enabled but no active provider configured\n");
-    return std::nullopt;
-  }
-
   if (scene.prompt.empty()) {
     return std::nullopt;
   }
@@ -185,7 +171,7 @@ RewriteWithOpenAiCompatible(const std::string &text,
     return std::nullopt;
   }
 
-  const std::string url = BuildRequestUrl(provider->base_url);
+  const std::string url = BuildRequestUrl(provider.base_url);
   if (url.empty()) {
     return std::nullopt;
   }
@@ -204,7 +190,7 @@ RewriteWithOpenAiCompatible(const std::string &text,
   messages.push_back({{"role", "user"}, {"content", text}});
 
   json request = {
-      {"model", provider->model},
+      {"model", provider.model},
       {"stream", false},
       {"temperature", 0.2},
       {"response_format", BuildCandidatesSchema(candidate_count)},
@@ -213,8 +199,8 @@ RewriteWithOpenAiCompatible(const std::string &text,
   const std::string request_body = request.dump();
 
   guard.headers = curl_slist_append(nullptr, "Content-Type: application/json");
-  if (!provider->api_key.empty()) {
-    const std::string auth = "Authorization: Bearer " + provider->api_key;
+  if (!provider.api_key.empty()) {
+    const std::string auth = "Authorization: Bearer " + provider.api_key;
     guard.headers = curl_slist_append(guard.headers, auth.c_str());
   }
 
@@ -224,7 +210,7 @@ RewriteWithOpenAiCompatible(const std::string &text,
   curl_easy_setopt(guard.curl, CURLOPT_POSTFIELDSIZE,
                    static_cast<long>(request_body.size()));
   curl_easy_setopt(guard.curl, CURLOPT_WRITEFUNCTION, WriteResponseCallback);
-  curl_easy_setopt(guard.curl, CURLOPT_TIMEOUT_MS, provider->timeout_ms);
+  curl_easy_setopt(guard.curl, CURLOPT_TIMEOUT_MS, provider.timeout_ms);
   curl_easy_setopt(guard.curl, CURLOPT_NOSIGNAL, 1L);
   curl_easy_setopt(guard.curl, CURLOPT_USERAGENT, "fcitx5-vinput/0.1");
 
@@ -319,20 +305,21 @@ PostProcessor::Process(const std::string &raw_text,
     return {};
   }
 
-  const int candidate_count =
-      NormalizePostprocessCandidateCount(settings.llm.postprocessCandidateCount);
+  const int candidate_count = NormalizeCandidateCount(scene.candidate_count);
 
   vinput::result::Payload fallback;
   std::set<std::string> fallback_seen;
   AppendUniqueCandidate(fallback, fallback_seen, normalized, vinput::result::kSourceRaw);
   fallback.commitText = normalized;
 
-  if (!settings.llm.enabled || candidate_count == 0 || scene.prompt.empty()) {
+  const LlmProvider *provider =
+      ResolveLlmProvider(settings, scene.provider_id);
+  if (!provider || candidate_count == 0 || scene.prompt.empty()) {
     return fallback;
   }
 
   auto rewritten =
-      RewriteWithOpenAiCompatible(normalized, scene, settings, candidate_count,
+      RewriteWithOpenAiCompatible(normalized, scene, *provider, candidate_count,
                                    error_out);
   if (!rewritten.has_value()) {
     return fallback;
@@ -360,6 +347,7 @@ PostProcessor::Process(const std::string &raw_text,
 vinput::result::Payload
 PostProcessor::ProcessCommand(const std::string &asr_text,
                               const std::string &selected_text,
+                              const vinput::scene::Definition &command_scene,
                               const CoreConfig &settings,
                               std::string *error_out) const {
   std::string normalized_asr = TrimAsciiWhitespace(asr_text);
@@ -376,27 +364,36 @@ PostProcessor::ProcessCommand(const std::string &asr_text,
     return fallback;
   }
 
-  vinput::scene::Definition synthetic_scene;
-  synthetic_scene.prompt =
+  // Build synthetic scene with hardcoded system prompt + user-customizable prompt
+  std::string system_prompt =
       "You are an AI assistant helping with text editing via voice input. "
       "The user has given a voice command to operate on the selected text. "
       "Note that the command is transcribed from voice input and may contain "
       "speech recognition errors — infer the most likely intended operation "
       "from context. Execute the inferred command on the user's text and "
       "output ONLY the result. Do not include markdown formatting or "
-      "explanations.\n\nUser voice command (may contain recognition errors): " +
+      "explanations.";
+  if (!command_scene.prompt.empty()) {
+    system_prompt += "\n\nAdditional instructions: " + command_scene.prompt;
+  }
+  system_prompt +=
+      "\n\nUser voice command (may contain recognition errors): " +
       normalized_asr;
 
-  const int command_candidate_count =
-      NormalizeCommandCandidateCount(settings.llm.commandCandidateCount);
+  vinput::scene::Definition synthetic_scene;
+  synthetic_scene.prompt = std::move(system_prompt);
 
-  // Early exit if LLM is disabled or candidate count is 0
-  if (!settings.llm.enabled || command_candidate_count == 0) {
+  const int command_candidate_count =
+      NormalizeCandidateCount(command_scene.candidate_count);
+
+  const LlmProvider *provider =
+      ResolveLlmProvider(settings, command_scene.provider_id);
+  if (!provider || command_candidate_count == 0) {
     return fallback;
   }
 
   auto rewritten =
-      RewriteWithOpenAiCompatible(selected_text, synthetic_scene, settings,
+      RewriteWithOpenAiCompatible(selected_text, synthetic_scene, *provider,
                                    command_candidate_count, error_out);
 
   vinput::result::Payload payload;

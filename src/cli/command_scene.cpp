@@ -16,26 +16,32 @@ int RunSceneList(Formatter &fmt, const CliContext &ctx) {
       bool active = (scene.id == config.scenes.activeScene);
       arr.push_back({{"id", scene.id},
                      {"label", vinput::scene::DisplayLabel(scene)},
+                     {"provider_id", scene.provider_id},
+                     {"candidate_count", scene.candidate_count},
+                     {"builtin", scene.builtin},
                      {"active", active}});
     }
     fmt.PrintJson(arr);
     return 0;
   }
 
-  std::vector<std::string> headers = {_("ID"), _("LABEL"), _("STATUS")};
+  std::vector<std::string> headers = {_("ID"), _("LABEL"), _("PROVIDER"), _("CANDIDATES"), _("STATUS")};
   std::vector<std::vector<std::string>> rows;
   for (const auto &scene : scenes) {
     std::string label = vinput::scene::DisplayLabel(scene);
     std::string status =
         (scene.id == config.scenes.activeScene) ? "[*]" : "[ ]";
-    rows.push_back({scene.id, label, status});
+    std::string provider = scene.provider_id.empty() ? "-" : scene.provider_id;
+    rows.push_back({scene.id, label, provider,
+                    std::to_string(scene.candidate_count), status});
   }
   fmt.PrintTable(headers, rows);
   return 0;
 }
 
 int RunSceneAdd(const std::string &id, const std::string &label,
-                const std::string &prompt, Formatter &fmt,
+                const std::string &prompt, const std::string &provider_id,
+                int candidate_count, Formatter &fmt,
                 const CliContext & /*ctx*/) {
   CoreConfig config = LoadCoreConfig();
 
@@ -43,6 +49,8 @@ int RunSceneAdd(const std::string &id, const std::string &label,
   def.id = id;
   def.label = label;
   def.prompt = prompt;
+  def.provider_id = provider_id;
+  def.candidate_count = candidate_count;
 
   vinput::scene::Config scene_config = ToSceneConfig(config.scenes);
   std::string error;

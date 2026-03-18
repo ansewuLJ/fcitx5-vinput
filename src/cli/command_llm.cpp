@@ -27,8 +27,7 @@ int RunLlmList(Formatter &fmt, const CliContext &ctx) {
       arr.push_back({{"name", p.name},
                      {"base_url", p.base_url},
                      {"model", p.model},
-                     {"api_key", ""},
-                     {"active", p.name == config.llm.activeProvider}});
+                     {"api_key", ""}});
     }
     fmt.PrintJson(arr);
     return 0;
@@ -37,10 +36,7 @@ int RunLlmList(Formatter &fmt, const CliContext &ctx) {
   std::vector<std::string> headers = {_("NAME"), _("BASE_URL"), _("MODEL"), _("API_KEY")};
   std::vector<std::vector<std::string>> rows;
   for (const auto &p : providers) {
-    std::string display_name = p.name;
-    if (p.name == config.llm.activeProvider)
-      display_name = "[*] " + p.name;
-    rows.push_back({display_name, p.base_url, p.model, MaskApiKey(p.api_key)});
+    rows.push_back({p.name, p.base_url, p.model, MaskApiKey(p.api_key)});
   }
   fmt.PrintTable(headers, rows);
   return 0;
@@ -66,44 +62,16 @@ int RunLlmAdd(const std::string &name, const std::string &base_url,
   provider.timeout_ms = timeout_ms;
   config.llm.providers.push_back(provider);
 
-  // Auto-set active provider if this is the first
-  if (config.llm.activeProvider.empty()) {
-    config.llm.activeProvider = name;
-  }
-
   if (!SaveConfigOrFail(config, fmt)) return 1;
   fmt.PrintSuccess(vinput::str::FmtStr(_("LLM provider '%s' added."), name));
-  return 0;
-}
-
-int RunLlmUse(const std::string &name, Formatter &fmt, const CliContext &ctx) {
-  (void)ctx;
-  auto config = LoadCoreConfig();
-  bool found = false;
-  for (const auto &p : config.llm.providers) {
-    if (p.name == name) {
-      found = true;
-      break;
-    }
-  }
-  if (!found) {
-    fmt.PrintError(vinput::str::FmtStr(_("LLM provider '%s' not found."), name));
-    return 1;
-  }
-  config.llm.activeProvider = name;
-  if (!SaveConfigOrFail(config, fmt)) return 1;
-  fmt.PrintSuccess(vinput::str::FmtStr(_("Active LLM provider set to '%s'."), name));
   return 0;
 }
 
 int RunLlmRemove(const std::string &name, bool force, Formatter &fmt,
                  const CliContext &ctx) {
   (void)ctx;
+  (void)force;
   auto config = LoadCoreConfig();
-  if (name == config.llm.activeProvider && !force) {
-    fmt.PrintError(vinput::str::FmtStr(_("Cannot remove active provider '%s'. Use --force."), name));
-    return 1;
-  }
   auto &providers = config.llm.providers;
   auto it =
       std::find_if(providers.begin(), providers.end(),
@@ -115,31 +83,5 @@ int RunLlmRemove(const std::string &name, bool force, Formatter &fmt,
   providers.erase(it);
   if (!SaveConfigOrFail(config, fmt)) return 1;
   fmt.PrintSuccess(vinput::str::FmtStr(_("LLM provider '%s' removed."), name));
-  return 0;
-}
-
-int RunLlmEnable(Formatter &fmt, const CliContext &ctx) {
-  (void)ctx;
-  auto config = LoadCoreConfig();
-  if (config.llm.enabled) {
-    fmt.PrintInfo(_("LLM is already enabled."));
-    return 0;
-  }
-  config.llm.enabled = true;
-  if (!SaveConfigOrFail(config, fmt)) return 1;
-  fmt.PrintSuccess(_("LLM features are now ENABLED. Restart the daemon to apply."));
-  return 0;
-}
-
-int RunLlmDisable(Formatter &fmt, const CliContext &ctx) {
-  (void)ctx;
-  auto config = LoadCoreConfig();
-  if (!config.llm.enabled) {
-    fmt.PrintInfo(_("LLM is already disabled."));
-    return 0;
-  }
-  config.llm.enabled = false;
-  if (!SaveConfigOrFail(config, fmt)) return 1;
-  fmt.PrintSuccess(_("LLM features are now DISABLED. Restart the daemon to apply."));
   return 0;
 }

@@ -129,13 +129,20 @@ int main(int argc, char *argv[]) {
         scene_config.activeSceneId = runtime_settings.scenes.activeScene;
         scene_config.scenes = runtime_settings.scenes.definitions;
         if (job.is_command) {
-          if (runtime_settings.llm.enabled && 
-              runtime_settings.llm.commandCandidateCount > 0) {
+          const auto *cmd_scene = FindCommandScene(runtime_settings);
+          if (cmd_scene &&
+              cmd_scene->candidate_count > 0 &&
+              !cmd_scene->provider_id.empty()) {
             current_status = Status::Postprocessing;
             dbus.EmitStatusChanged(StatusToString(Status::Postprocessing));
           }
+          vinput::scene::Definition fallback_cmd;
+          fallback_cmd.id = std::string(kCommandSceneId);
+          fallback_cmd.builtin = true;
+          const auto &command_scene = cmd_scene ? *cmd_scene : fallback_cmd;
           std::string llm_error;
           result = post_processor.ProcessCommand(text, job.selected_text,
+                                                 command_scene,
                                                  runtime_settings, &llm_error);
           if (!llm_error.empty()) {
             dbus.EmitLlmError(llm_error);
@@ -144,8 +151,8 @@ int main(int argc, char *argv[]) {
         } else {
           const auto &scene =
               vinput::scene::Resolve(scene_config, job.scene_id);
-          if (runtime_settings.llm.enabled && 
-              runtime_settings.llm.postprocessCandidateCount > 0 &&
+          if (scene.candidate_count > 0 &&
+              !scene.provider_id.empty() &&
               !scene.prompt.empty()) {
             current_status = Status::Postprocessing;
             dbus.EmitStatusChanged(StatusToString(Status::Postprocessing));

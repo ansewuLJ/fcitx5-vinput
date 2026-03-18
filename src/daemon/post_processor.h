@@ -18,6 +18,7 @@ public:
 
   vinput::result::Payload ProcessCommand(const std::string &asr_text,
                                          const std::string &selected_text,
+                                         const vinput::scene::Definition &command_scene,
                                          const CoreConfig &settings,
                                          std::string *error_out = nullptr) const;
 };

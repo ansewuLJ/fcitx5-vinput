@@ -60,7 +60,7 @@ std::string PostprocessingPreeditText() { return _("... Postprocessing ..."); }
 
 std::string NoSelectionPreeditText() { return _("Please select text first."); }
 
-std::string LlmNotEnabledPreeditText() { return _("Please enable LLM first."); }
+std::string LlmNotEnabledPreeditText() { return _("No LLM provider configured for command mode."); }
 
 std::string ResultCandidateComment(const vinput::result::Candidate &candidate,
                                     std::size_t llm_index) {
@@ -357,11 +357,13 @@ void VinputEngine::handleKeyEvent(fcitx::Event &event) {
     hideResultMenu();
 
     if (is_command) {
-      // Check LLM is enabled before proceeding
+      // Check command scene has a provider configured
       {
         auto core_config = LoadCoreConfig();
-        if (!core_config.llm.enabled ||
-            ResolveActiveLlmProvider(core_config) == nullptr) {
+        const auto *cmd_scene = FindCommandScene(core_config);
+        if (!cmd_scene ||
+            cmd_scene->provider_id.empty() ||
+            ResolveLlmProvider(core_config, cmd_scene->provider_id) == nullptr) {
           recording_ = false;
           updatePreedit(active_ic_, LlmNotEnabledPreeditText());
           keyEvent.filterAndAccept();

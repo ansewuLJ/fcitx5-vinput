@@ -78,20 +78,6 @@ void MainWindow::setupGeneralTab() {
   comboModel = new QComboBox();
   formLayout->addRow(tr("Active Model:"), comboModel);
 
-  checkLlmEnabled = new QCheckBox(tr("Enable LLM Global Features"));
-  formLayout->addRow(tr("LLM:"), checkLlmEnabled);
-
-  spinCandidateCount = new QSpinBox();
-  spinCandidateCount->setRange(0, 9);
-  spinCandidateCount->setValue(1);
-  spinCandidateCount->setSpecialValueText(tr("Disabled (0)"));
-  formLayout->addRow(tr("Candidate Count:"), spinCandidateCount);
-
-  spinCommandCandidateCount = new QSpinBox();
-  spinCommandCandidateCount->setRange(1, 9);
-  spinCommandCandidateCount->setValue(1);
-  formLayout->addRow(tr("Command Candidate Count:"), spinCommandCandidateCount);
-
   layout->addLayout(formLayout);
 
   layout->addSpacing(20);
@@ -571,11 +557,6 @@ void MainWindow::loadConfigToUi() {
   } else {
     textHotwords->clear();
   }
-
-  // LLM
-  checkLlmEnabled->setChecked(currentConfig.llm.enabled);
-  spinCandidateCount->setValue(currentConfig.llm.postprocessCandidateCount);
-  spinCommandCandidateCount->setValue(currentConfig.llm.commandCandidateCount);
 }
 
 void MainWindow::onSaveClicked() {
@@ -588,9 +569,6 @@ void MainWindow::onSaveClicked() {
     device_value = comboDevice->currentText();
   currentConfig.captureDevice = device_value.toStdString();
   currentConfig.activeModel = comboModel->currentText().toStdString();
-  currentConfig.llm.enabled = checkLlmEnabled->isChecked();
-  currentConfig.llm.postprocessCandidateCount = spinCandidateCount->value();
-  currentConfig.llm.commandCandidateCount = spinCommandCandidateCount->value();
 
   currentConfig.hotwordsFile = editHotwordsFile->text().trimmed().toStdString();
   if (!currentConfig.hotwordsFile.empty()) {
@@ -871,11 +849,9 @@ void MainWindow::setupLlmTab() {
   btnLlmAdd = new QPushButton(tr("Add"));
   btnLlmEdit = new QPushButton(tr("Edit"));
   btnLlmRemove = new QPushButton(tr("Remove"));
-  btnLlmSetActive = new QPushButton(tr("Set Active"));
   btnLayout->addWidget(btnLlmAdd);
   btnLayout->addWidget(btnLlmEdit);
   btnLayout->addWidget(btnLlmRemove);
-  btnLayout->addWidget(btnLlmSetActive);
   btnLayout->addStretch();
   listLayout->addLayout(btnLayout);
 
@@ -885,8 +861,6 @@ void MainWindow::setupLlmTab() {
   connect(btnLlmAdd, &QPushButton::clicked, this, &MainWindow::onLlmAdd);
   connect(btnLlmEdit, &QPushButton::clicked, this, &MainWindow::onLlmEdit);
   connect(btnLlmRemove, &QPushButton::clicked, this, &MainWindow::onLlmRemove);
-  connect(btnLlmSetActive, &QPushButton::clicked, this,
-          &MainWindow::onLlmSetActive);
 
   QTimer::singleShot(0, this, &MainWindow::refreshLlmList);
 }
@@ -899,11 +873,8 @@ void MainWindow::refreshLlmList() {
     QString name = QString::fromStdString(p.name);
     QString base_url = QString::fromStdString(p.base_url);
     QString model = QString::fromStdString(p.model);
-    bool active = (p.name == config.llm.activeProvider);
 
     QString display = QString("%1 - %2 @ %3").arg(name, model, base_url);
-    if (active)
-      display += " *";
 
     auto *item = new QListWidgetItem(display, listProviders);
     item->setData(Qt::UserRole, name);
@@ -963,9 +934,6 @@ void MainWindow::onLlmAdd() {
   provider.api_key = editApiKey->text().toStdString();
   provider.timeout_ms = spinTimeout->value();
   config.llm.providers.push_back(provider);
-
-  if (config.llm.activeProvider.empty())
-    config.llm.activeProvider = name;
 
   if (!SaveCoreConfig(config)) {
     QMessageBox::critical(this, tr("Error"),
@@ -1064,25 +1032,6 @@ void MainWindow::onLlmRemove() {
     return;
 
   providers.erase(it);
-  if (config.llm.activeProvider == name)
-    config.llm.activeProvider = providers.empty() ? "" : providers.front().name;
-
-  if (!SaveCoreConfig(config)) {
-    QMessageBox::critical(this, tr("Error"),
-                          tr("Failed to save configuration."));
-    return;
-  }
-  refreshLlmList();
-}
-
-void MainWindow::onLlmSetActive() {
-  auto *item = listProviders->currentItem();
-  if (!item)
-    return;
-
-  QString provider_name = item->data(Qt::UserRole).toString();
-  CoreConfig config = LoadCoreConfig();
-  config.llm.activeProvider = provider_name.toStdString();
 
   if (!SaveCoreConfig(config)) {
     QMessageBox::critical(this, tr("Error"),

@@ -10,6 +10,9 @@ struct Definition {
   std::string id;
   std::string label;
   std::string prompt;
+  std::string provider_id;
+  int candidate_count = 1;
+  bool builtin = false;
 };
 
 struct Config {

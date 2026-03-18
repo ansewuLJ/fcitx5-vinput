@@ -49,7 +49,6 @@ private slots:
   void onLlmAdd();
   void onLlmEdit();
   void onLlmRemove();
-  void onLlmSetActive();
 
   // Hotword Management
   void onBrowseHotwordsClicked();
@@ -80,9 +79,6 @@ private:
   // General Tab
   QComboBox *comboDevice;
   QComboBox *comboModel;
-  QCheckBox *checkLlmEnabled;
-  QSpinBox *spinCandidateCount;
-  QSpinBox *spinCommandCandidateCount;
   QComboBox *comboActiveScene;
   QPushButton *btnOpenConfig;
   QPushButton *btnSave;
@@ -108,7 +104,6 @@ private:
   QPushButton *btnLlmAdd;
   QPushButton *btnLlmEdit;
   QPushButton *btnLlmRemove;
-  QPushButton *btnLlmSetActive;
 
   // Hotword Tab
   QLineEdit *editHotwordsFile;
