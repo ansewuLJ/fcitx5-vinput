@@ -281,3 +281,40 @@ jobs:
           fi
 
           gh release upload "${GITHUB_REF_NAME}" --repo "${GH_REPO}" release/* --clobber
+
+  copr:
+    needs: source_archive
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: source-archive
+          path: dist
+
+      - name: Install rpmbuild and copr-cli
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rpm copr-cli
+
+      - name: Build SRPM
+        shell: bash
+        run: |
+          version="${{ needs.source_archive.outputs.package_version }}"
+          mkdir -p ~/rpmbuild/{SOURCES,SPECS}
+          cp dist/${{ needs.source_archive.outputs.source_archive }} ~/rpmbuild/SOURCES/
+          cp packaging/fedora/fcitx5-vinput.spec ~/rpmbuild/SPECS/
+
+          rpmbuild -bs ~/rpmbuild/SPECS/fcitx5-vinput.spec \
+            --define "_topdir $HOME/rpmbuild" \
+            --define "_vinput_version ${version}"
+
+      - name: Submit to COPR
+        shell: bash
+        run: |
+          mkdir -p ~/.config
+          echo "${{ secrets.COPR_CONFIG }}" > ~/.config/copr
+
+          srpm=$(find ~/rpmbuild/SRPMS -name '*.src.rpm' -print -quit)
+          copr-cli build fcitx5-vinput-bin "${srpm}"
