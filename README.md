@@ -11,7 +11,7 @@
 
 [English](README.md) | [中文](README_zh.md)
 
-<video src="assets/demo.mp4" autoplay loop muted playsinline></video>
+<video src="https://raw.githubusercontent.com/xifan2333/fcitx5-vinput/main/assets/demo.mp4" autoplay loop muted playsinline></video>
 
 </div>
 
@@ -21,7 +21,6 @@ Powered by [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) for on-device sp
 
 - **Two trigger modes** — tap to toggle recording on/off, or hold to push-to-talk
 - **Command mode** — select text, speak an instruction, release to apply
-- **CLI trigger** — `vinput recording start/stop/toggle` for scripting and custom keybindings
 - **LLM post-processing** — error correction, formatting, translation, and more
 - **Scene management** — switch post-processing prompts on the fly
 - **Multiple LLM providers** — configure and switch between servers at runtime

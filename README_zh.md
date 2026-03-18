@@ -11,7 +11,7 @@
 
 [English](README.md) | [中文](README_zh.md)
 
-<video src="assets/demo.mp4" autoplay loop muted playsinline></video>
+<video src="https://raw.githubusercontent.com/xifan2333/fcitx5-vinput/main/assets/demo.mp4" autoplay loop muted playsinline></video>
 
 </div>
 
@@ -21,7 +21,6 @@
 
 - **两种触发模式** — 短按切换录音开关，长按即说即停（push-to-talk）
 - **命令模式** — 选中文本，语音指令直接修改
-- **CLI 触发** — `vinput recording start/stop/toggle`，方便脚本和自定义快捷键
 - **LLM 后处理** — 纠错、格式化、翻译等
 - **场景管理** — 运行时随时切换后处理 prompt
 - **多 LLM provider** — 配置多个服务端，随时切换
