@@ -358,7 +358,7 @@ jobs:
             --distribution noble \
             "Release ${version}"
 
-          debuild -S -sa -k"E377996FF15A21371CC875F55D1938D94063BAAB"
+          debuild -S -sa -d -k"E377996FF15A21371CC875F55D1938D94063BAAB"
 
           cd ..
           dput ppa:xifan233/ppa fcitx5-vinput_${version}-1ppa1~noble1_source.changes
