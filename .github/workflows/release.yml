@@ -327,7 +327,7 @@ jobs:
     env:
       DEBFULLNAME: "xifan233"
       DEBEMAIL: "xifan2333@gmail.com"
-      GPG_KEY_ID: "E377996FF15A21371CC875F55D1938D94063BAAB"
+      GPG_KEY_ID: "E6D4B5BAE745E1506C9961EC892ED0BBCEA13586"
     steps:
       - uses: actions/checkout@v4
 
@@ -369,6 +369,6 @@ jobs:
 
           cd ..
           debsign -k"${GPG_KEY_ID}" \
-            -p"gpg --no-tty --pinentry-mode loopback --passphrase ''" \
+            -p"gpg --no-tty --pinentry-mode loopback" \
             "${pkg}_source.changes"
           dput ppa:xifan233/ppa "${pkg}_source.changes"
