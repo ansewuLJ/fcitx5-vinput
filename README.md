@@ -11,6 +11,8 @@
 
 [English](README.md) | [中文](README_zh.md)
 
+<video src="assets/demo.mp4" autoplay loop muted playsinline></video>
+
 </div>
 
 Powered by [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) for on-device speech recognition, with optional LLM post-processing via any OpenAI-compatible API.

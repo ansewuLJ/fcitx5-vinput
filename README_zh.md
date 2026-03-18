@@ -11,6 +11,8 @@
 
 [English](README.md) | [中文](README_zh.md)
 
+<video src="assets/demo.mp4" autoplay loop muted playsinline></video>
+
 </div>
 
 基于 [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) 实现本地离线语音识别，支持通过任意 OpenAI 兼容 API 进行 LLM 后处理。

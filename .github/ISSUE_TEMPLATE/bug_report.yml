@@ -1,0 +1,56 @@
+name: Bug Report
+description: Report a bug or unexpected behavior
+labels: ["bug"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      placeholder: Describe the bug clearly.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      placeholder: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      placeholder: "e.g. 0.2.0 (vinput --version)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: distro
+    attributes:
+      label: Distribution
+      options:
+        - Arch Linux
+        - Ubuntu 24.04
+        - Ubuntu 22.04
+        - Debian 12
+        - Fedora
+        - Other (specify below)
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: "Paste output from `journalctl --user -u vinput-daemon.service` or fcitx5 logs."
+      render: text
