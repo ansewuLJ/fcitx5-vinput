@@ -266,6 +266,16 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate changelog
+        uses: orhun/git-cliff-action@v4
+        id: changelog
+        with:
+          args: --latest --strip header
+
       - uses: actions/download-artifact@v4
         with:
           path: release-artifacts
@@ -277,10 +287,20 @@ jobs:
           find release-artifacts -type f -exec cp {} release/ \;
 
           if ! gh release view "${GITHUB_REF_NAME}" --repo "${GH_REPO}" >/dev/null 2>&1; then
-            gh release create "${GITHUB_REF_NAME}" --repo "${GH_REPO}" --generate-notes
+            gh release create "${GITHUB_REF_NAME}" --repo "${GH_REPO}" \
+              --notes "${{ steps.changelog.outputs.content }}"
           fi
 
           gh release upload "${GITHUB_REF_NAME}" --repo "${GH_REPO}" release/* --clobber
+
+      - name: Trigger AUR publish
+        env:
+          GH_TOKEN: ${{ secrets.AUR_AUTO_PAT }}
+        run: |
+          gh workflow run build-and-publish.yml \
+            --repo xifan2333/aur-auto \
+            --field package=fcitx5-vinput-bin \
+            --field force=true
 
   copr:
     needs: source_archive
