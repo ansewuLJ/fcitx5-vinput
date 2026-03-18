@@ -1,0 +1,31 @@
+Source: fcitx5-vinput
+Section: utils
+Priority: optional
+Maintainer: xifan233 <xifan2333@gmail.com>
+Build-Depends: debhelper-compat (= 13),
+               cmake (>= 3.16),
+               ninja-build,
+               pkg-config,
+               gettext,
+               libcurl4-openssl-dev,
+               libssl-dev,
+               libarchive-dev,
+               libpipewire-0.3-dev,
+               libsystemd-dev,
+               libfcitx5core-dev,
+               libfcitx5config-dev,
+               libfcitx5utils-dev,
+               fcitx5-modules-dev,
+               nlohmann-json3-dev,
+               qtbase5-dev,
+               qttools5-dev
+Standards-Version: 4.6.2
+Homepage: https://github.com/xifan2333/fcitx5-vinput
+
+Package: fcitx5-vinput
+Architecture: amd64
+Depends: ${shlibs:Depends}, ${misc:Depends}, fcitx5
+Description: Offline voice input addon for Fcitx5
+ Local offline voice input plugin for Fcitx5, powered by sherpa-onnx
+ for on-device speech recognition with optional LLM post-processing
+ via any OpenAI-compatible API.
