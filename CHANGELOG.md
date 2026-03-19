@@ -2,7 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.1](https://github.com/xifan2333/fcitx5-vinput/releases/tag/v1.1.1) — 2026-03-19
+
+### Features
+
+- **gui:** Add candidate count to scene dialog, cache model list
 ## [1.1.0](https://github.com/xifan2333/fcitx5-vinput/releases/tag/v1.1.0) — 2026-03-18
+
+### Miscellaneous
+
+- Bump version to 1.1.0, add changelog generation
 
 ### Refactor
 
