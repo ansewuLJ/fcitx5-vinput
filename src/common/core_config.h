@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -12,6 +13,22 @@ struct LlmProvider {
   std::string api_key;
 };
 
+// ASR Backend type: "local" (sherpa-onnx) or "qwen-http" (Qwen3-ASR HTTP API)
+struct AsrBackend {
+  std::string type{"local"};  // "local" or "qwen-http"
+
+  // Qwen3-ASR HTTP backend config
+  struct QwenHttp {
+    std::string url{"http://127.0.0.1:8000"};
+    std::string model{"Qwen/Qwen3-ASR-0.6B"};
+    int timeoutMs{30000};
+    bool streaming{false};
+  } qwenHttp;
+
+  bool IsLocal() const { return type == "local"; }
+  bool IsQwenHttp() const { return type == "qwen-http"; }
+};
+
 struct CoreConfig {
   std::string captureDevice{"default"};
   std::string activeModel{"paraformer-zh"};
@@ -21,6 +38,10 @@ struct CoreConfig {
   std::string defaultLanguage{"zh"};
 
   std::string hotwordsFile;
+
+  // Hotwords in JSON format (for Qwen3-ASR HTTP backend)
+  // Format: {"category": {"word": weight, ...}, ...}
+  std::map<std::string, std::map<std::string, float>> hotwordsJson;
 
   struct Llm {
     std::vector<LlmProvider> providers;
@@ -37,6 +58,9 @@ struct CoreConfig {
     std::string activeScene{"default"};
     std::vector<vinput::scene::Definition> definitions;
   } scenes;
+
+  // ASR backend configuration
+  AsrBackend asrBackend;
 };
 
 // API Functions

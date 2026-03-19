@@ -21,6 +21,7 @@ add_executable(vinput-daemon
     vad_trimmer.cpp
     dbus_service.cpp
     post_processor.cpp
+    qwen_asr_client.cpp
 )
 
 target_compile_definitions(vinput-daemon PRIVATE

@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  qwen-asr:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: qwen3-asr-server:latest
+    container_name: qwen3-asr-server
+    ports:
+      - "8000:8000"
+    volumes:
+      # Persist downloaded models
+      - qwen-models:/root/.cache/huggingface
+      # Mount hotwords config
+      - ./hotwords.json:/app/hotwords.json:ro
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+      - HF_HOME=/root/.cache/huggingface
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    command: >
+      python qwen_asr_server.py
+      --model Qwen/Qwen3-ASR-0.6B
+      --backend transformers
+      --host 0.0.0.0
+      --port 8000
+      --gpu-memory-utilization 0.7
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 300s
+    restart: unless-stopped
+
+volumes:
+  qwen-models:

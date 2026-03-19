@@ -18,3 +18,4 @@ compile_commands.json
 *.mo
 .vscode/
 .codex/
+__pycache__/

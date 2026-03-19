@@ -41,16 +41,18 @@ int main(int argc, char *argv[]) {
 
   auto startup_settings = LoadCoreConfig();
   NormalizeCoreConfig(&startup_settings);
-  ModelManager model_mgr(ResolveModelBaseDir(startup_settings).string(),
-                         startup_settings.activeModel);
-  auto model_info = model_mgr.GetModelInfo();
 
-  if (!disable_asr && !model_mgr.EnsureModels()) {
-    fprintf(stderr, "vinput-daemon: model check failed, exiting\n");
-    return 1;
-  }
+  // Only check local models if using local backend
+  if (!disable_asr && startup_settings.asrBackend.IsLocal()) {
+    ModelManager model_mgr(ResolveModelBaseDir(startup_settings).string(),
+                           startup_settings.activeModel);
+    auto model_info = model_mgr.GetModelInfo();
 
-  if (!disable_asr) {
+    if (!model_mgr.EnsureModels()) {
+      fprintf(stderr, "vinput-daemon: model check failed, exiting\n");
+      return 1;
+    }
+
     fprintf(stderr, "vinput-daemon: using model '%s' (type: %s, lang: %s)\n",
             model_mgr.GetModelName().c_str(), model_info.model_type.c_str(),
             startup_settings.defaultLanguage.c_str());
@@ -64,10 +66,15 @@ int main(int argc, char *argv[]) {
     asr_config.normalize_audio = startup_settings.asr.normalizeAudio;
     asr_config.vad_enabled = startup_settings.asr.vad.enabled;
     asr_config.vad_model_path = VINPUT_VAD_MODEL_PATH;
-    if (!asr.Init(model_info, asr_config)) {
+    
+    // Use CoreConfig-based init which auto-selects backend
+    if (!asr.Init(startup_settings, asr_config)) {
       fprintf(stderr, "vinput-daemon: ASR engine init failed, exiting\n");
       return 1;
     }
+    
+    fprintf(stderr, "vinput-daemon: ASR backend '%s' initialized\n", 
+            asr.BackendName().c_str());
   }
   if (disable_asr) {
     fprintf(stderr, "vinput-daemon: running with ASR disabled\n");

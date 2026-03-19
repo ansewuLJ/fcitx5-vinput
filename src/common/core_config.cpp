@@ -136,6 +136,35 @@ void from_json(const json &j, CoreConfig::Asr &a) {
 }
 
 // ---------------------------------------------------------------------------
+// AsrBackend serialization
+// ---------------------------------------------------------------------------
+
+void to_json(json &j, const AsrBackend::QwenHttp &q) {
+  j = json{{"url", q.url},
+           {"model", q.model},
+           {"timeout_ms", q.timeoutMs},
+           {"streaming", q.streaming}};
+}
+
+void from_json(const json &j, AsrBackend::QwenHttp &q) {
+  q.url = j.value("url", q.url);
+  q.model = j.value("model", q.model);
+  q.timeoutMs = j.value("timeout_ms", q.timeoutMs);
+  q.streaming = j.value("streaming", q.streaming);
+}
+
+void to_json(json &j, const AsrBackend &b) {
+  j = json{{"type", b.type}, {"qwen_http", b.qwenHttp}};
+}
+
+void from_json(const json &j, AsrBackend &b) {
+  b.type = j.value("type", b.type);
+  if (j.contains("qwen_http")) {
+    b.qwenHttp = j.at("qwen_http").get<AsrBackend::QwenHttp>();
+  }
+}
+
+// ---------------------------------------------------------------------------
 // CoreConfig::Scenes serialization
 // ---------------------------------------------------------------------------
 
@@ -168,6 +197,10 @@ void to_json(json &j, const CoreConfig &p) {
   j["hotwords_file"] = p.hotwordsFile;
   j["scenes"] = p.scenes;
   j["asr"] = p.asr;
+  j["asr_backend"] = p.asrBackend;
+  if (!p.hotwordsJson.empty()) {
+    j["hotwords_json"] = p.hotwordsJson;
+  }
 }
 
 void from_json(const json &j, CoreConfig &p) {
@@ -187,6 +220,12 @@ void from_json(const json &j, CoreConfig &p) {
   }
   if (j.contains("asr")) {
     p.asr = j.at("asr").get<CoreConfig::Asr>();
+  }
+  if (j.contains("asr_backend")) {
+    p.asrBackend = j.at("asr_backend").get<AsrBackend>();
+  }
+  if (j.contains("hotwords_json")) {
+    p.hotwordsJson = j.at("hotwords_json").get<std::map<std::string, std::map<std::string, float>>>();
   }
 }
 
